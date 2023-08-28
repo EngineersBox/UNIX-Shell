@@ -22,7 +22,6 @@ typedef enum Token {
 extern const char* token_names[];
 
 typedef struct Lexer {
-	size_t prev_pos;
 	size_t pos;
 	int cchar;
 	int symbol;

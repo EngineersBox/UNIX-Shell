@@ -17,12 +17,9 @@ int parser_test_main(int argc, char** argv) {
 	char* string = "cmd1 | ./cmd2 > output1 & /test/other\\ cmd3 > ouput2 & cmd4\0";
 	printf("Parsing: %s\n", string);
 	Lexer lexer = lexer_new(string);
-	printf("Tokenised input\n");
 	Parser parser = parser_default();
 	size_t count;
-	printf("Parsing input\n");
 	CommandList cmdList = parse(&parser, &lexer, &count);
-	printf("CommandList count: %zu\n", count);
 	for (int i = 0; i < count; i++) {
 		CommandLine line = cmdList[i];
 		for (int j = 0; j < line.pipeCount; j++) {
@@ -35,8 +32,9 @@ int parser_test_main(int argc, char** argv) {
 		}
 		for (int j = 0; j < line.modifiersCount; j++) {
 			IoModifier ioModifier = line.ioModifiers[j];
-			printf("[>] %s\n", ioModifier.applicant);
+			printf("   [>] %s\n", ioModifier.applicant);
 		}
+		printf("   [&] %s\n", line.bgOp ? "true" : "false");
 	}
 	return 0;
 }
