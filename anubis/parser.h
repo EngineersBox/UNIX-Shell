@@ -5,6 +5,11 @@
 
 #include "tokeniser.h"
 
+#define DEFAULT_ARG_LIST_SIZE 3
+#define DEFAULT_PIPES_LIST_SIZE 1
+#define DEFAULT_IO_MODIFIER_LIST_SIZE 5
+#define DEFAULT_COMMAND_LIST_SIZE 5
+
 typedef char** ArgList;
 
 typedef struct CommandAndArgs {
@@ -36,8 +41,13 @@ typedef struct CommandLine {
 typedef CommandLine* CommandList;
 
 typedef struct Parser {
-
+	size_t arg_list_base_size;
+	size_t pipes_list_base_size;
+	size_t io_modifier_list_base_size;
+	size_t command_list_base_size;
 } Parser;
+
+Parser parser_default();
 
 CommandList parse(Parser* parser, Tokeniser* tokeniser);
 

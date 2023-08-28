@@ -7,19 +7,23 @@
 #include "error.h"
 #include "tokeniser.h"
 
-#define DEFAULT_ARG_LIST_SIZE 3
-#define DEFAULT_PIPES_LIST_SIZE 1
-#define DEFAULT_IO_MODIFIER_LIST_SIZE 5
-#define DEFAULT_COMMAND_LIST_SIZE 5
+Parser parser_default() {
+	return (Parser) {
+		.arg_list_base_size = DEFAULT_ARG_LIST_SIZE,
+		.pipes_list_base_size = DEFAULT_PIPES_LIST_SIZE,
+		.io_modifier_list_base_size = DEFAULT_IO_MODIFIER_LIST_SIZE,
+		.command_list_base_size = DEFAULT_COMMAND_LIST_SIZE,
+	};
+}
 
 ArgList parse_arg_list(Parser* parser, Tokeniser* tokeniser) {
-	ArgList argList = calloc(DEFAULT_ARG_LIST_SIZE, sizeof(*argList));
+	size_t size = parser->arg_list_base_size;
+	ArgList argList = calloc(size, sizeof(*argList));
 	if (argList == NULL) {
-		ERROR(ENOMEM, "Unable to allocate ArgList of size %d\n", DEFAULT_ARG_LIST_SIZE);
+		ERROR(ENOMEM, "Unable to allocate ArgList of size %d\n", size);
 		return NULL;
 	}
 	Token symbol;
-	size_t size = DEFAULT_ARG_LIST_SIZE;
 	size_t index = 0;
 	while (tokeniser_next_symbol(tokeniser)) {
 		symbol = tokeniser_current_symbol(tokeniser);
@@ -28,9 +32,10 @@ ArgList parse_arg_list(Parser* parser, Tokeniser* tokeniser) {
 			break;
 		}
 		if (index >= size - 1) {
-			argList = realloc(argList, size + DEFAULT_ARG_LIST_SIZE);
+			size += parser->arg_list_base_size;
+			argList = realloc(argList, size);
 			if (argList == NULL) {
-				ERROR(ENOMEM, "Unable top resize ArgList to size %d\n", size + DEFAULT_ARG_LIST_SIZE);
+				ERROR(ENOMEM, "Unable top resize ArgList to size %d\n", size);
 				return NULL;
 			}
 		}
@@ -53,13 +58,13 @@ int parse_command_and_args(Parser* parser, Tokeniser* tokeniser, CommandAndArgs*
 } 
 
 PipeList parse_pipe_list(Parser* parser, Tokeniser* tokeniser) {
-	PipeList pipes = calloc(DEFAULT_PIPES_LIST_SIZE, sizeof(*pipes));
+	size_t size = parser->pipes_list_base_size;
+	PipeList pipes = calloc(size, sizeof(*pipes));
 	if (pipes == NULL) {
-		ERROR(ENOMEM, "Unable to allocate PipeList of size %d\n", DEFAULT_PIPES_LIST_SIZE);
+		ERROR(ENOMEM, "Unable to allocate PipeList of size %d\n", size);
 		return NULL;
 	}
 	Token symbol;
-	size_t size = DEFAULT_PIPES_LIST_SIZE;
 	size_t index = 0;
 	while (tokeniser_next_symbol(tokeniser)) {
 		symbol = tokeniser_current_symbol(tokeniser);
@@ -69,9 +74,10 @@ PipeList parse_pipe_list(Parser* parser, Tokeniser* tokeniser) {
 			return NULL;
 		}
 		if (index >= size - 1) {
-			pipes = realloc(pipes, size + DEFAULT_PIPES_LIST_SIZE);
+			size += parser->pipes_list_base_size;
+			pipes = realloc(pipes, size);
 			if (pipes == NULL) {
-				ERROR(ENOMEM, "Unable to resize PipeList to size %d\n", size + DEFAULT_PIPES_LIST_SIZE);
+				ERROR(ENOMEM, "Unable to resize PipeList to size %d\n", size);
 				return NULL;
 			}
 		}
@@ -91,13 +97,13 @@ int map_token_to_io_modifier_type(Token token) {
 }
 
 IoModifierList parse_io_modifier_list(Parser* parser, Tokeniser* tokeniser) {
-	IoModifierList ioModifierList = calloc(DEFAULT_IO_MODIFIER_LIST_SIZE, sizeof(*ioModifierList));
+	size_t size = parser->io_modifier_list_base_size;
+	IoModifierList ioModifierList = calloc(size, sizeof(*ioModifierList));
 	if (ioModifierList == NULL) {
-		ERROR(ENOMEM, "Unable to allocate IoModifierList of size %d\n", DEFAULT_IO_MODIFIER_LIST_SIZE);
+		ERROR(ENOMEM, "Unable to allocate IoModifierList of size %d\n", size);
 		return NULL;
 	}
 	Token symbol;
-	size_t size = DEFAULT_IO_MODIFIER_LIST_SIZE;
 	size_t index = 0;
 	while (tokeniser_next_symbol(tokeniser)) {
 		symbol = tokeniser_current_symbol(tokeniser);
@@ -111,9 +117,10 @@ IoModifierList parse_io_modifier_list(Parser* parser, Tokeniser* tokeniser) {
 			ERROR(EINVAL, "Expected application of IO modifier (string), got %s", token_names[symbol]);
 		}
 		if (index >= size - 1) {
-			ioModifierList = realloc(ioModifierList, size + DEFAULT_IO_MODIFIER_LIST_SIZE);
+			size += parser->io_modifier_list_base_size;
+			ioModifierList = realloc(ioModifierList, size);
 			if (ioModifierList == NULL) {
-				ERROR(ENOMEM, "Unable to resize IoModifierList to size %d\n", size + DEFAULT_IO_MODIFIER_LIST_SIZE);
+				ERROR(ENOMEM, "Unable to resize IoModifierList to size %d\n", size);
 				return NULL;
 			}
 		}
@@ -148,12 +155,12 @@ int parse_command_line(Parser* parser, Tokeniser* tokeniser, CommandLine* cmdLin
 }
 
 CommandList parse(Parser* parser, Tokeniser* tokeniser) {
-	CommandList cmdList = calloc(DEFAULT_COMMAND_LIST_SIZE, sizeof(*cmdList));
+	size_t size = parser->command_list_base_size;
+	CommandList cmdList = calloc(size, sizeof(*cmdList));
 	if (cmdList == NULL) {
-		ERROR(ENOMEM, "Unable to allocate command list");
+		ERROR(ENOMEM, "Unable to allocate command list of size %d\n", size);
 		return NULL;
 	}
-	size_t size = DEFAULT_COMMAND_LIST_SIZE;
 	size_t index = 0;
 	int res;
 	while (tokeniser_current_symbol(tokeniser) != EOI) {
@@ -163,9 +170,10 @@ CommandList parse(Parser* parser, Tokeniser* tokeniser) {
 			return NULL;
 		}
 		if (index >= size - 1) {
-			cmdList = realloc(cmdList, size + DEFAULT_COMMAND_LIST_SIZE);
+			size += parser->command_list_base_size;
+			cmdList = realloc(cmdList, size);
 			if (cmdList == NULL) {
-				ERROR(ENOMEM, "Unable to resize CommandList to size %d\n", size + DEFAULT_COMMAND_LIST_SIZE);
+				ERROR(ENOMEM, "Unable to resize CommandList to size %d\n", size);
 				return NULL;
 			}
 		}
