@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #include "error.h"
+#include "checks.h"
 #include "lexer.h"
 
 Parser parser_default() {
@@ -17,6 +18,7 @@ Parser parser_default() {
 }
 
 ArgList parse_arg_list(Parser* _this, Lexer* lexer, size_t* count) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);	
 	if (lexer_current_symbol(lexer) != STRING) {
 		*count = 0;
 		return NULL;
@@ -36,8 +38,7 @@ ArgList parse_arg_list(Parser* _this, Lexer* lexer, size_t* count) {
 			break;
 		} else if (index >= size - 1) {
 			size += _this->arg_list_base_size * sizeof(char*);
-			argList = realloc(argList, size);
-			if (argList == NULL) {
+			if ((argList = realloc(argList, size)) == NULL) {
 				ERROR(ENOMEM, "Unable to resize ArgList to size %d\n", size);
 				return NULL;
 			}
@@ -53,6 +54,7 @@ ArgList parse_arg_list(Parser* _this, Lexer* lexer, size_t* count) {
 
 // -1: Failure, 0: Continue, 1: Terminate
 int parse_command_and_args(Parser* _this, Lexer* lexer, CommandAndArgs* commandAndArgs) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, -1);
 	Token prefix = lexer_current_symbol(lexer);
 	if (prefix != STRING && prefix != PIPE) {
 		ERROR(EINVAL, "Expected a pipe or subcommand, got %s\n", token_names[prefix]);
@@ -70,6 +72,7 @@ int parse_command_and_args(Parser* _this, Lexer* lexer, CommandAndArgs* commandA
 } 
 
 PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t* count) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	size_t size = _this->pipes_list_base_size * sizeof(CommandAndArgs);
 	PipeList pipes = malloc(size);
 	if (pipes == NULL) {
@@ -84,8 +87,7 @@ PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t* count) {
 			return NULL;
 		} else if (index >= size - 1) {
 			size += _this->pipes_list_base_size * sizeof(CommandAndArgs);
-			pipes = realloc(pipes, size);
-			if (pipes == NULL) {
+			if ((pipes = realloc(pipes, size)) == NULL) {
 				ERROR(ENOMEM, "Unable to resize PipeList to size %d\n", size);
 				return NULL;
 			}
@@ -107,6 +109,7 @@ int map_token_to_io_modifier_type(Token token) {
 }
 
 IoModifierList parse_io_modifier_list(Parser* _this, Lexer* lexer, size_t* count) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	size_t size = _this->io_modifier_list_base_size * sizeof(IoModifier);
 	IoModifierList ioModifierList = malloc(size);
 	if (ioModifierList == NULL) {
@@ -132,8 +135,7 @@ IoModifierList parse_io_modifier_list(Parser* _this, Lexer* lexer, size_t* count
 			return NULL;
 		} else if (index >= size - 1) {
 			size += _this->io_modifier_list_base_size * sizeof(IoModifier);
-			ioModifierList = realloc(ioModifierList, size);
-			if (ioModifierList == NULL) {
+			if ((ioModifierList = realloc(ioModifierList, size)) == NULL) {
 				ERROR(ENOMEM, "Unable to resize IoModifierList to size %d\n", size);
 				return NULL;
 			}
@@ -158,6 +160,7 @@ BackgroundOp parse_background_op(Parser* _this, Lexer* lexer) {
 }
 
 int parse_command_line(Parser* _this, Lexer* lexer, CommandLine* cmdLine) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, 0)
 	PipeList pipes = parse_pipe_list(_this, lexer, &cmdLine->pipeCount);
 	if (pipes == NULL) {
 		return 0;
@@ -174,6 +177,7 @@ int parse_command_line(Parser* _this, Lexer* lexer, CommandLine* cmdLine) {
 }
 
 CommandList parse(Parser* _this, Lexer* lexer, size_t* count) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	size_t size = _this->command_list_base_size * sizeof(CommandLine);
 	CommandList cmdList = malloc(size);
 	if (cmdList == NULL) {
@@ -189,8 +193,7 @@ CommandList parse(Parser* _this, Lexer* lexer, size_t* count) {
 			return NULL;
 		} else if (index >= size - 1) {
 			size += _this->command_list_base_size * sizeof(CommandLine);
-			cmdList = realloc(cmdList, size);
-			if (cmdList == NULL) {
+			if ((cmdList = realloc(cmdList, size))== NULL) {
 				ERROR(ENOMEM, "Unable to resize CommandList to size %d\n", size);
 				return NULL;
 			}

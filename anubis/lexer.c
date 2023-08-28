@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "error.h"
+#include "checks.h"
 
 #include <errno.h>
 #include <string.h>
@@ -13,17 +14,9 @@ const char* token_names[] = {
 };
 
 Lexer lexer_new(char* source) {
-	return (Lexer) {
-		.pos = 0,
-		.cchar = ' ',
-		.symbol = -1,
-		.source_len = strlen(source),
-		.source = source,
-		.is_reading_string = false,
-		.string_len = 0,
-		.string_pos = 0,
-		.string = NULL,
-	};
+	Lexer lexer = {};
+	lexer_reset(&lexer, source);
+	return lexer;
 }
 
 int lexer_reset(Lexer* _this, char* source) {
@@ -52,8 +45,12 @@ void next_char(Lexer* _this) {
 
 #define DEFAULT_STRING_LEN 100
 
+#define _LEXER_NULL_CHECK_RETURN(_this, returnValue) INSTANCE_NULL_CHECK_RETURN("lexer", _this, returnValue); INSTANCE_NULL_CHECK_RETURN("lexer->source", _this, returnValue)
+#define _LEXER_NULL_CHECK(_this) INSTANCE_NULL_CHECK("lexer", _this)
+
 // 0: Finished, 1: Ignore, Other: failure
 int next_string(Lexer* _this) {
+	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos <= _this->string_pos) {
 		return 1;
 	} else if (_this->string != NULL) {
@@ -75,9 +72,17 @@ int next_string(Lexer* _this) {
 		} else if (res != 1) { \
 			return res; \
 		} \
-	} \
+	}
+
+#define SINGLE_TOKEN_CASE(literal, token) \
+	case literal:\
+		HANDLE_NEXT_STRING\
+		next_char(_this);\
+		_this->symbol = (token);\
+		break
 
 int lexer_next_symbol(Lexer* _this) {
+	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos >= _this->source_len - 1) {
 		return 0;
 	}
@@ -96,26 +101,10 @@ read:
 			HANDLE_NEXT_STRING
 			next_char(_this);
 			goto read;
-		case EOF:
-			HANDLE_NEXT_STRING
-			next_char(_this);
-			_this->symbol = EOI;
-			break;
-		case _TOK_AMPERSAND:
-			HANDLE_NEXT_STRING
-			next_char(_this);
-			_this->symbol = AMPERSAND;
-			break;
-		case _TOK_PIPE:
-			HANDLE_NEXT_STRING
-			next_char(_this);
-			_this->symbol = PIPE;
-			break;
-		case _TOK_GREATER:
-			HANDLE_NEXT_STRING
-			next_char(_this);
-			_this->symbol = GREATER;
-			break;
+		SINGLE_TOKEN_CASE(EOF, EOI);
+		SINGLE_TOKEN_CASE(_TOK_AMPERSAND, AMPERSAND);
+		SINGLE_TOKEN_CASE(_TOK_PIPE, PIPE);
+		SINGLE_TOKEN_CASE(_TOK_GREATER, GREATER);
 		case '\\':
 			escape = true;
 		default:
@@ -142,13 +131,16 @@ read:
 }
 
 void lexer_unget_symbol(Lexer* _this) {
+	_LEXER_NULL_CHECK(_this);
 	_this->cchar = _this->source[--_this->pos];
 }
 
 int lexer_current_symbol(Lexer* _this) {
+	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	return _this->symbol;
 }
 
 char* lexer_current_string(Lexer* _this) {
+	_LEXER_NULL_CHECK_RETURN(_this, NULL);
 	return _this->string;
 }

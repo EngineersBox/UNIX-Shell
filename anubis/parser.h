@@ -41,7 +41,7 @@ typedef struct CommandLine {
 	BackgroundOp bgOp;
 } CommandLine;
 
-typedef CommandLine* CommandList; // TODO: Make these into struct defs and add size as a field
+typedef CommandLine* CommandList;
 
 typedef struct Parser {
 	size_t arg_list_base_size;
