@@ -5,7 +5,7 @@
 #include <errno.h>
 
 #include "error.h"
-#include "tokeniser.h"
+#include "lexer.h"
 
 Parser parser_default() {
 	return (Parser) {
@@ -16,8 +16,8 @@ Parser parser_default() {
 	};
 }
 
-ArgList parse_arg_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
-	if (tokeniser_current_symbol(tokeniser) != STRING) {
+ArgList parse_arg_list(Parser* parser, Lexer* lexer, size_t* count) {
+	if (lexer_current_symbol(lexer) != STRING) {
 		*count = 0;
 		return NULL;
 	}
@@ -29,10 +29,10 @@ ArgList parse_arg_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
 	}
 	Token symbol;
 	size_t index = 0;
-	 while (tokeniser_next_symbol(tokeniser)) {	
-		symbol = tokeniser_current_symbol(tokeniser);
+	 while (lexer_next_symbol(lexer)) {	
+		symbol = lexer_current_symbol(lexer);
 		if (symbol != STRING) {
-			tokeniser_unget_symbol(tokeniser);
+			lexer_unget_symbol(lexer);
 			break;
 		}
 		if (index >= size - 1) {
@@ -43,7 +43,7 @@ ArgList parse_arg_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
 				return NULL;
 			}
 		}
-		if ((argList[index++] = strdup(tokeniser_current_string(tokeniser))) == NULL) {
+		if ((argList[index++] = strdup(lexer_current_string(lexer))) == NULL) {
 			ERROR(ENOMEM, "Unable to duplicate argument string\n");
 			return NULL;
 		}
@@ -53,26 +53,26 @@ ArgList parse_arg_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
 }
 
 // -1: Failure, 0: Continue, 1: Terminate
-int parse_command_and_args(Parser* parser, Tokeniser* tokeniser, CommandAndArgs* commandAndArgs) {
-	Token prefix = tokeniser_current_symbol(tokeniser);
+int parse_command_and_args(Parser* parser, Lexer* lexer, CommandAndArgs* commandAndArgs) {
+	Token prefix = lexer_current_symbol(lexer);
 	printf("Prefix: %s\n", token_names[prefix]);
 	if (prefix != STRING && prefix != PIPE) {
 		ERROR(EINVAL, "Expected a pipe or subcommand, got %s\n", token_names[prefix]);
 		return -1;
-	} else if (prefix == PIPE && !tokeniser_next_symbol(tokeniser)) {
+	} else if (prefix == PIPE && !lexer_next_symbol(lexer)) {
 		ERROR(EINVAL, "Unable to parse command following pipe\n");
 		return -1;
 	}
-	if ((commandAndArgs->command = strdup(tokeniser_current_string(tokeniser))) == NULL) {
+	if ((commandAndArgs->command = strdup(lexer_current_string(lexer))) == NULL) {
 		ERROR(ENOMEM, "unable to duplicate command string\n");
 		return -1;
 	}
-	commandAndArgs->args = parse_arg_list(parser, tokeniser, &commandAndArgs->argCount);
-	printf("CMD: %s :: %s\n", commandAndArgs->command, token_names[tokeniser_current_symbol(tokeniser)]);
-	return tokeniser_current_symbol(tokeniser) != PIPE;
+	commandAndArgs->args = parse_arg_list(parser, lexer, &commandAndArgs->argCount);
+	printf("CMD: %s :: %s\n", commandAndArgs->command, token_names[lexer_current_symbol(lexer)]);
+	return lexer_current_symbol(lexer) != PIPE;
 } 
 
-PipeList parse_pipe_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
+PipeList parse_pipe_list(Parser* parser, Lexer* lexer, size_t* count) {
 	size_t size = parser->pipes_list_base_size * sizeof(CommandAndArgs);
 	PipeList pipes = malloc(size);
 	if (pipes == NULL) {
@@ -82,7 +82,7 @@ PipeList parse_pipe_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
 	size_t index = 0;
 	do {
 		CommandAndArgs commandAndArgs = {};
-		int res = parse_command_and_args(parser, tokeniser, &commandAndArgs);
+		int res = parse_command_and_args(parser, lexer, &commandAndArgs);
 		if (res == -1) {
 			return NULL;
 		}
@@ -98,7 +98,7 @@ PipeList parse_pipe_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
 		if (res == 1) {
 			break;
 		}
-	} while (tokeniser_next_symbol(tokeniser));
+	} while (lexer_next_symbol(lexer));
 	*count = index;
 	return pipes;
 }
@@ -110,7 +110,7 @@ int map_token_to_io_modifier_type(Token token) {
 	}
 }
 
-IoModifierList parse_io_modifier_list(Parser* parser, Tokeniser* tokeniser, size_t* count) {
+IoModifierList parse_io_modifier_list(Parser* parser, Lexer* lexer, size_t* count) {
 	size_t size = parser->io_modifier_list_base_size * sizeof(IoModifier);
 	IoModifierList ioModifierList = malloc(size);
 	if (ioModifierList == NULL) {
@@ -120,17 +120,17 @@ IoModifierList parse_io_modifier_list(Parser* parser, Tokeniser* tokeniser, size
 	Token symbol;
 	size_t index = 0;
 	do {
-		symbol = tokeniser_current_symbol(tokeniser);
+		symbol = lexer_current_symbol(lexer);
 		int modifier = map_token_to_io_modifier_type(symbol);
 		if (modifier == -1) {
 			break;
 		}
 		IoModifierType type = (IoModifierType) modifier;
-		if (!tokeniser_next_symbol(tokeniser)) {
+		if (!lexer_next_symbol(lexer)) {
 			ERROR(EINVAL, "Unable to parse IO modifier target\n");
 			return NULL;
 		}
-		symbol = tokeniser_current_symbol(tokeniser);
+		symbol = lexer_current_symbol(lexer);
 		if (symbol != STRING) {
 			ERROR(EINVAL, "Expected target of IO modifier (string), got %s", token_names[symbol]);
 			return NULL;
@@ -145,36 +145,36 @@ IoModifierList parse_io_modifier_list(Parser* parser, Tokeniser* tokeniser, size
 		}
 		ioModifierList[index++] = (IoModifier) {
 			.type = type,
-			.applicant = strdup(tokeniser_current_string(tokeniser))
+			.applicant = strdup(lexer_current_string(lexer))
 		};
 		printf("Modifier: %s\n", ioModifierList[index - 1].applicant);
-	} while (tokeniser_next_symbol(tokeniser));
+	} while (lexer_next_symbol(lexer));
 	*count = index;
 	return ioModifierList;
 }
 
-BackgroundOp parse_background_op(Parser* parser, Tokeniser* tokeniser) {
-	Token token = tokeniser_current_symbol(tokeniser);
+BackgroundOp parse_background_op(Parser* parser, Lexer* lexer) {
+	Token token = lexer_current_symbol(lexer);
 	return token == AMPERSAND;
 }
 
-int parse_command_line(Parser* parser, Tokeniser* tokeniser, CommandLine* cmdLine) {
-	PipeList pipes = parse_pipe_list(parser, tokeniser, &cmdLine->pipeCount);
+int parse_command_line(Parser* parser, Lexer* lexer, CommandLine* cmdLine) {
+	PipeList pipes = parse_pipe_list(parser, lexer, &cmdLine->pipeCount);
 	if (pipes == NULL) {
 		return 0;
 	}
-	IoModifierList ioModifiers = parse_io_modifier_list(parser, tokeniser, &cmdLine->modifiersCount);
+	IoModifierList ioModifiers = parse_io_modifier_list(parser, lexer, &cmdLine->modifiersCount);
 	if (ioModifiers == NULL) {
 		return 0;
 	}
-	BackgroundOp bgOp = parse_background_op(parser, tokeniser);
+	BackgroundOp bgOp = parse_background_op(parser, lexer);
 	cmdLine->pipes = pipes;
 	cmdLine->ioModifiers = ioModifiers;
 	cmdLine->bgOp = bgOp;
 	return 1;
 }
 
-CommandList parse(Parser* parser, Tokeniser* tokeniser, size_t* count) {
+CommandList parse(Parser* parser, Lexer* lexer, size_t* count) {
 	size_t size = parser->command_list_base_size * sizeof(CommandLine);
 	CommandList cmdList = malloc(size);
 	if (cmdList == NULL) {
@@ -183,9 +183,9 @@ CommandList parse(Parser* parser, Tokeniser* tokeniser, size_t* count) {
 	}
 	size_t index = 0;
 	int res;
-	while (tokeniser_next_symbol(tokeniser) && tokeniser_current_symbol(tokeniser) != EOI) {
+	while (lexer_next_symbol(lexer) && lexer_current_symbol(lexer) != EOI) {
 		CommandLine cmdLine = {};
-		res = parse_command_line(parser, tokeniser, &cmdLine);
+		res = parse_command_line(parser, lexer, &cmdLine);
 		if (!res) {
 			return NULL;
 		}

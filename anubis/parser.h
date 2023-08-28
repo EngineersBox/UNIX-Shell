@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "tokeniser.h"
+#include "lexer.h"
 
 #define DEFAULT_ARG_LIST_SIZE 3
 #define DEFAULT_PIPES_LIST_SIZE 1
@@ -52,6 +52,6 @@ typedef struct Parser {
 
 Parser parser_default();
 
-CommandList parse(Parser* parser, Tokeniser* tokeniser, size_t* count);
+CommandList parse(Parser* parser, Lexer* lexer, size_t* count);
 
 #endif // ANUBIS_PARSER_H
