@@ -52,6 +52,32 @@ typedef struct Parser {
 
 Parser parser_default();
 
+/**
+ * PARSER GRAMMAR:
+ * =================================================
+ * GOAL: CommandList;
+ *
+ * ArgList: <STRING>*;
+ *
+ * CommandAndArgs: <STRING> ArgList;
+ *
+ * PipeList:
+ *		| <PIPE> CommandAndArgs PipeList
+ *		| CommandAndArgs;
+ *
+ * IoModifier: <GREATER> <STRING>;
+ *
+ * IoModifierList:
+ *		| IoModifier IoModifierList
+ *		| IoModifier;
+ *
+ * BackgroundOp: <AMPERSAND>?;
+ *
+ * CommandLine: PipeList IoModifierList BackgroundOp;
+ *
+ * CommandList: CommandLine+;
+ * =================================================
+ */
 CommandList parse(Parser* parser, Lexer* lexer, size_t* count);
 
 #endif // ANUBIS_PARSER_H
