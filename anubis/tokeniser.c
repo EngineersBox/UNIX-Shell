@@ -4,6 +4,14 @@
 #include <errno.h>
 #include <string.h>
 
+const char* token_names[] = {
+	[AMPERSAND] = "AMPERSAND",
+	[PIPE] = "PIPE",
+	[GREATER] = "GREATER",
+	[STRING] = "STRING",
+	[EOI] = "EOI"
+};
+
 Tokeniser tokeniser_new(char* source) {
 	return (Tokeniser) {
 		.pos = 0,
@@ -133,7 +141,7 @@ read:
 	return 1;
 }
 
-void tokeniser_unget_token(Tokeniser* _this) {
+void tokeniser_unget_symbol(Tokeniser* _this) {
 	_this->cchar = _this->source[--_this->pos];
 }
 

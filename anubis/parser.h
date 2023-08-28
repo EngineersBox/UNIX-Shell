@@ -13,6 +13,7 @@
 typedef char** ArgList;
 
 typedef struct CommandAndArgs {
+	size_t argCount;
 	char* command;
 	ArgList args;
 } CommandAndArgs;
@@ -33,12 +34,14 @@ typedef IoModifier* IoModifierList;
 typedef bool BackgroundOp;
 
 typedef struct CommandLine {
+	size_t pipeCount;
+	size_t modifiersCount;
 	PipeList pipes;
 	IoModifierList ioModifiers;
 	BackgroundOp bgOp;
 } CommandLine;
 
-typedef CommandLine* CommandList;
+typedef CommandLine* CommandList; // TODO: Make these into struct defs and add size as a field
 
 typedef struct Parser {
 	size_t arg_list_base_size;
@@ -49,6 +52,6 @@ typedef struct Parser {
 
 Parser parser_default();
 
-CommandList parse(Parser* parser, Tokeniser* tokeniser);
+CommandList parse(Parser* parser, Tokeniser* tokeniser, size_t* count);
 
 #endif // ANUBIS_PARSER_H

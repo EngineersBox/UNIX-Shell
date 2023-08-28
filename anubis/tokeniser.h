@@ -19,14 +19,8 @@ typedef enum Token {
 	EOI
 } Token;
 
-static const char* token_names[] = {
-	[AMPERSAND] = "AMPERSAND",
-	[PIPE] = "PIPE",
-	[GREATER] = "GREATER",
-	[STRING] = "STRING",
-	[EOI] = "EOI"
+extern const char* token_names[];
 
-};
 typedef struct Tokeniser {
 	size_t prev_pos;
 	size_t pos;
