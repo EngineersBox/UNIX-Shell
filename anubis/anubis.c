@@ -9,34 +9,40 @@
 #include <assert.h>
 #include <stdarg.h>
 
-
-// Use this _DEBUG variable to control the error messages printed
-// by the ERROR function.
-//  _DEBUG=0: print only one error message; 
-//  _DEBUG=1: print custom messages.
-// Make sure you set _DEBUG to 0 for the submitted version. 
-
-int _DEBUG = 0;
-
-void ERROR(int errnum, const char * format, ... )
-{
-    if(_DEBUG) {
-        va_list args;
-        va_start (args, format);
-        vfprintf(stderr, format, args);
-        va_end (args);
-        if(errnum > 0) fprintf(stderr, " : %s", strerror(errnum));
-        fprintf(stderr, "\n"); 
-        return; 
-    }
-
-    fprintf(stderr, "An error has occurred\n"); 
-}
+#include "error.h"
+#include "tokeniser.h"
 
 // TODO: implement your shell!
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char** argv) {
+	// 1. Check if args exist for batch exec
+	// 2. If they do then pipe batch file lines as input
+	// 3. Otherwise poll stdin for lines as input
+	// 4. Tokenise line
+	// 5. Parse line
+	// 6. Construct execution structures
+	// 7. Execute commands and resolve paths on-demand
+	return 0;
+}
 
+int tokeniser_test_main(int argc, char** argv) {
+	char* string = "cmd1 | ./cmd2 > output1 & /test/other\\ cmd3 > ouput2 & cmd4";
+	printf("Tokenising: %s\n", string);
+	Tokeniser tok = tokeniser_new(string);
+	while (tokeniser_next_symbol(&tok)) {
+		Token symbol = tokeniser_current_symbol(&tok);
+		switch (symbol) {
+			case AMPERSAND:
+			case PIPE:
+			case GREATER:
+			case EOI:
+				printf("[SYMBOL: %s]\n", token_names[symbol]);
+				break;
+			case STRING:
+				printf("[SYMBOL: %s] %s\n", token_names[symbol], tokeniser_current_string(&tok));
+				break;
+		}
+	}
     return 0;
 }
+

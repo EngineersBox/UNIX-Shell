@@ -3,11 +3,15 @@
 
 CC = gcc
 CFLAGS = -Wall
+LIBS=
 
-anubis: anubis.c 
-	$(CC) $(CFLAGS) $< -o $@
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
+
+anubis: $(OBJS) 
+	$(CC) $(CFLAGS) -o $@ $^ ${LIBS}
 
 clean:
-	$(RM) anubis 
+	$(RM) anubis $(OBJS) 
 
 .PHONY: clean
