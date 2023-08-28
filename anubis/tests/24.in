@@ -1,0 +1,4 @@
+path /bin /usr/bin 
+echo hello,world | cat | wc -c 
+exit
+ 

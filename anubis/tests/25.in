@@ -1,0 +1,4 @@
+path /bin /usr/bin 
+echo 1 | xargs echo 2 | xargs echo 3 | xargs echo 4 | xargs echo 5 > /tmp/output25
+cat /tmp/output25
+exit

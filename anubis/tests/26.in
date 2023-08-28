@@ -1,0 +1,6 @@
+path /bin /usr/bin 
+echo 1 | xargs echo 2 > /tmp/output26a & echo 3 | xargs echo 4 > /tmp/output26b & echo 5 | xargs echo 6 > /tmp/output26c 
+cat /tmp/output26a
+cat /tmp/output26b
+cat /tmp/output26c
+exit

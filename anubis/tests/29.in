@@ -1,0 +1,3 @@
+path /bin /usr/bin 
+echo pipe | xargs echo long | xargs echo really | xargs echo a | xargs echo is | xargs echo this
+exit
