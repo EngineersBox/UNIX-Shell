@@ -133,6 +133,10 @@ read:
 	return 1;
 }
 
+void tokeniser_unget_token(Tokeniser* _this) {
+	_this->cchar = _this->source[--_this->pos];
+}
+
 int tokeniser_current_symbol(Tokeniser* _this) {
 	return _this->symbol;
 }

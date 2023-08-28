@@ -28,6 +28,7 @@ static const char* token_names[] = {
 
 };
 typedef struct Tokeniser {
+	size_t prev_pos;
 	size_t pos;
 	int cchar;
 	int symbol;
@@ -43,6 +44,7 @@ Tokeniser tokeniser_new(char* source);
 
 int tokeniser_reset(Tokeniser* _this, char* source);
 int tokeniser_next_symbol(Tokeniser* _this);
+void tokeniser_unget_symbol(Tokeniser* _this);
 
 int tokeniser_current_symbol(Tokeniser* _this);
 char* tokeniser_current_string(Tokeniser* _this);
