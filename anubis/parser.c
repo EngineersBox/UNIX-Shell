@@ -47,20 +47,20 @@ Parser parser_default() {
 
 #define HANDLED_REALLOC(target, bump)\
 	size += (bump);\
-	if (((target) = realloc((target), size)) == NULL) {\
+	if (((target) = realloc((target), size * sizeof(*target))) == NULL) {\
 		ERROR(ENOMEM, "Unable tp resize" #target " to size %d\n", size);\
 		return NULL;\
 	}
 
-VISIBILITY_PRIVATE ArgList parse_arg_list(Parser* _this, Lexer* lexer, size_t* count) {
+VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);	
 	if (lexer_current_symbol(lexer) != STRING) {
 		*count = 0;
 		return NULL;
 	}
-	size_t size = _this->arg_list_base_size * sizeof(char*);
-	ArgList argList = malloc(size);
-	if (argList == NULL) {
+	size_t size = _this->arg_list_base_size;
+	Args args = calloc(size, sizeof(*args));
+	if (args == NULL) {
 		ERROR(ENOMEM, "Unable to allocate ArgList of size %d\n", size);
 		return NULL;
 	}
@@ -72,19 +72,19 @@ VISIBILITY_PRIVATE ArgList parse_arg_list(Parser* _this, Lexer* lexer, size_t* c
 			lexer_unget_symbol(lexer);
 			break;
 		} else if (index >= size - 1) {
-			HANDLED_REALLOC(argList, _this->arg_list_base_size * sizeof(char*));
+			HANDLED_REALLOC(args, _this->arg_list_base_size);
 		}
-		if ((argList[index++] = strdup(lexer_current_string(lexer))) == NULL) {
+		if ((args[index++] = strdup(lexer_current_string(lexer))) == NULL) {
 			ERROR(ENOMEM, "Unable to duplicate argument string\n");
 			return NULL;
 		}
 	}
 	*count = index;
-	return argList;
+	return args;
 }
 
 // -1: Failure, 0: Continue, 1: Terminate
-VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, CommandAndArgs* commandAndArgs) {
+VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Command* commandAndArgs) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, -1);
 	Token prefix = lexer_current_symbol(lexer);
 	if (prefix != STRING && prefix != PIPE) {
@@ -93,31 +93,31 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 	} else if (prefix == PIPE && !lexer_next_symbol(lexer)) {
 		ERROR(EINVAL, "Unable to parse command following pipe\n");
 		return -1;
-	} else if ((commandAndArgs->command = strdup(lexer_current_string(lexer))) == NULL) { // FIXME: Weird characters for only first command after parsing has completed
+	} else if ((commandAndArgs->command = strdup(lexer_current_string(lexer))) == NULL) {
 		ERROR(ENOMEM, "unable to duplicate command string\n");
 		return -1;
 	}
-	commandAndArgs->args = parse_arg_list(_this, lexer, &commandAndArgs->argCount);
-	printf("CMD: %s :: %s\n", commandAndArgs->command, token_names[lexer_current_symbol(lexer)]);
+	commandAndArgs->args = parse_args(_this, lexer, &commandAndArgs->argCount);
+	printf("CMD: %s@%p :: %s\n", commandAndArgs->command, commandAndArgs->command, token_names[lexer_current_symbol(lexer)]);
 	return lexer_current_symbol(lexer) != PIPE;
 } 
 
 VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
-	size_t size = _this->pipes_list_base_size * sizeof(CommandAndArgs);
-	PipeList pipes = malloc(size);
+	size_t size = _this->pipes_list_base_size;
+	PipeList pipes = calloc(size, sizeof(*pipes));
 	if (pipes == NULL) {
 		ERROR(ENOMEM, "Unable to allocate PipeList of size %d\n", size);
 		return NULL;
 	}
 	size_t index = 0;
 	do {
-		CommandAndArgs commandAndArgs = {};
+		Command commandAndArgs = {};
 		int res = parse_command_and_args(_this, lexer, &commandAndArgs);
 		if (res == -1) {
 			return NULL;
 		} else if (index >= size - 1) {
-			HANDLED_REALLOC(pipes, _this->pipes_list_base_size * sizeof(CommandAndArgs));
+			HANDLED_REALLOC(pipes, _this->pipes_list_base_size);
 		}
 		pipes[index++] = commandAndArgs;
 		if (res == 1) {
@@ -137,8 +137,8 @@ VISIBILITY_PRIVATE int map_token_to_io_modifier_type(Token token) {
 
 VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
-	size_t size = _this->io_modifier_list_base_size * sizeof(IoModifier);
-	IoModifierList ioModifierList = malloc(size);
+	size_t size = _this->io_modifier_list_base_size;
+	IoModifierList ioModifierList = calloc(size, sizeof(*ioModifierList));
 	if (ioModifierList == NULL) {
 		ERROR(ENOMEM, "Unable to allocate IoModifierList of size %d\n", size);
 		return NULL;
@@ -161,17 +161,17 @@ VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* l
 			ERROR(EINVAL, "Expected target of IO modifier (string), got %s", token_names[symbol]);
 			return NULL;
 		} else if (index >= size - 1) {
-			HANDLED_REALLOC(ioModifierList, _this->io_modifier_list_base_size * sizeof(IoModifier));
+			HANDLED_REALLOC(ioModifierList, _this->io_modifier_list_base_size);
 		}
 		ioModifierList[index++] = (IoModifier) {
 			.type = type,
-			.applicant = strdup(lexer_current_string(lexer))
+			.target = strdup(lexer_current_string(lexer))
 		};
-		if (ioModifierList[index - 1].applicant == NULL) {
-			ERROR(ENOMEM, "Unable to duplicate modifier target applicant string\n");
+		if (ioModifierList[index - 1].target == NULL) {
+			ERROR(ENOMEM, "Unable to duplicate modifier target string\n");
 			return NULL;
 		}
-		printf("Modifier: %s\n", ioModifierList[index - 1].applicant);
+		printf("Modifier: %s\n", ioModifierList[index - 1].target);
 	} while (lexer_next_symbol(lexer));
 	*count = index;
 	return ioModifierList;
@@ -199,10 +199,10 @@ VISIBILITY_PRIVATE int parse_command_line(Parser* _this, Lexer* lexer, CommandLi
 	return 1;
 }
 
-VISIBILITY_PUBLIC CommandList parse(Parser* _this, Lexer* lexer, size_t* count) {
+VISIBILITY_PUBLIC CommandTable parse(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
-	size_t size = _this->command_list_base_size * sizeof(CommandLine);
-	CommandList commandList = malloc(size);
+	size_t size = _this->command_list_base_size;
+	CommandTable commandList = calloc(size, sizeof(*commandList));
 	if (commandList == NULL) {
 		ERROR(ENOMEM, "Unable to allocate command list of size %d\n", size);
 		return NULL;
@@ -215,7 +215,7 @@ VISIBILITY_PUBLIC CommandList parse(Parser* _this, Lexer* lexer, size_t* count) 
 		if (!res) {
 			return NULL;
 		} else if (index >= size - 1) {
-			HANDLED_REALLOC(commandList, _this->command_list_base_size * sizeof(CommandLine));
+			HANDLED_REALLOC(commandList, _this->command_list_base_size);
 		}
 		commandList[index++] = cmdLine;
 	}

@@ -19,12 +19,12 @@ int parser_test_main(int argc, char** argv) {
 	Lexer lexer = lexer_new(string);
 	Parser parser = parser_default();
 	size_t count;
-	CommandList cmdList = parse(&parser, &lexer, &count);
+	CommandTable cmdList = parse(&parser, &lexer, &count);
 	for (int i = 0; i < count; i++) {
 		CommandLine line = cmdList[i];
 		for (int j = 0; j < line.pipeCount; j++) {
-			CommandAndArgs cmdArgs = line.pipes[j];
-			printf("[%d] %s [", i, cmdArgs.command);
+			Command cmdArgs = line.pipes[j];
+			printf("[%d] %s@%p [", i, cmdArgs.command, cmdArgs.command);
 			for (int k = 0; k < cmdArgs.argCount; k++) {
 				printf(" %s", cmdArgs.args[k]);
 			}
@@ -32,7 +32,7 @@ int parser_test_main(int argc, char** argv) {
 		}
 		for (int j = 0; j < line.modifiersCount; j++) {
 			IoModifier ioModifier = line.ioModifiers[j];
-			printf("   [>] %s\n", ioModifier.applicant);
+			printf("   [>] %s\n", ioModifier.target);
 		}
 		printf("   [&] %s\n", line.bgOp ? "true" : "false");
 	}

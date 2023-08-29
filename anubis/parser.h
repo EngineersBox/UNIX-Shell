@@ -10,15 +10,15 @@
 #define DEFAULT_IO_MODIFIER_LIST_SIZE 5
 #define DEFAULT_COMMAND_LIST_SIZE 5
 
-typedef char** ArgList;
+typedef char** Args;
 
-typedef struct CommandAndArgs {
+typedef struct Command {
 	size_t argCount;
 	char* command;
-	ArgList args;
-} CommandAndArgs;
+	Args args;
+} Command;
 
-typedef CommandAndArgs* PipeList;
+typedef Command* PipeList;
 
 typedef enum IoModifierType {
 	GREAT // Maps to Token::GREAT
@@ -26,7 +26,7 @@ typedef enum IoModifierType {
 
 typedef struct IoModifier {
 	IoModifierType type;
-	char* applicant;
+	char* target;
 } IoModifier;
 
 typedef IoModifier* IoModifierList;
@@ -41,7 +41,7 @@ typedef struct CommandLine {
 	BackgroundOp bgOp;
 } CommandLine;
 
-typedef CommandLine* CommandList;
+typedef CommandLine* CommandTable;
 
 typedef struct Parser {
 	size_t arg_list_base_size;
@@ -78,6 +78,6 @@ Parser parser_default();
  * CommandList: CommandLine+;
  * =================================================
  */
-CommandList parse(Parser* parser, Lexer* lexer, size_t* count);
+CommandTable parse(Parser* parser, Lexer* lexer, size_t* count);
 
 #endif // ANUBIS_PARSER_H

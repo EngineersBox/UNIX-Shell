@@ -1,8 +1,11 @@
 # Feel free to extend this Makefile as you see fit. Just ensure that
 # running `make` will compile your code to a binary named `anubis`.
 
-CC = gcc
-CFLAGS = -Wall
+CC=gcc
+# Release
+#CFLAGS=-Wall
+# Debug
+CFLAGS=-O0 -Wall -lm -g -fno-omit-frame-pointer
 LIBS=
 
 SRCS=$(wildcard *.c)
