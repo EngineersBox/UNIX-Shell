@@ -13,30 +13,28 @@
 #include "error.h"
 #include "lexer.h"
 #include "parser.h"
+#include "executor.h"
+
+int executor_test_main(int argc, char** argv) {
+	char* string = "echo \"yeah nah\" | wc -c > test.txt & echo \"wait now\"\0";
+	printf("Executing: %s\n", string);
+	Lexer lexer = lexer_new(string);
+	Parser parser = parser_default();
+	CommandTable* table = parse(&parser, &lexer);
+	command_table_dump(table);
+	//execute(table);
+	command_table_free(table);
+	lexer_free(&lexer);
+	return 0;
+}
 
 int parser_test_main(int argc, char** argv) {
-	char* string = "cmd1 | ./cmd2 > output1 & /test/other\\ cmd3 > ouput2 & cmd4\0";
+	char* string = "cmd1 | ./cmd2 > output1 & /test/other\\ cmd3 > ouput2 & cmd4";
 	printf("Parsing: %s\n", string);
 	Lexer lexer = lexer_new(string);
 	Parser parser = parser_default();
 	CommandTable* table = parse(&parser, &lexer);
-	for (int i = 0; i < table->lineCount; i++) {
-		CommandLine* line = table->lines[i];
-		for (int j = 0; j < line->pipeCount; j++) {
-			Command* cmdArgs = line->pipes[j];
-			printf("[%d] %s@%p [", i, cmdArgs->command, cmdArgs->command);
-			for (int k = 0; k < cmdArgs->argCount; k++) {
-				printf(" %s", cmdArgs->args[k]);
-			}
-			printf("]\n");
-		}
-		for (int j = 0; j < line->modifiersCount; j++) {
-			IoModifier* ioModifier = line->ioModifiers[j];
-			printf("   [>] %s\n", ioModifier->target);
-
-		}
-		printf("   [&] %s\n", line->bgOp ? "true" : "false");
-	}
+	command_table_dump(table);
 	command_table_free(table);
 	lexer_free(&lexer);
 	return 0;
@@ -73,6 +71,6 @@ int main(int argc, char** argv) {
 	// 5. Parse line
 	// 6. Construct execution structures
 	// 7. Execute commands and resolve paths on-demand
-	parser_test_main(0, NULL);
+	executor_test_main(0, NULL);
 	return 0;
 }

@@ -52,4 +52,6 @@ typedef struct CommandTable {
 CommandTable* command_table_new();
 void command_table_free(CommandTable* table);
 
+void command_table_dump(CommandTable* table);
+
 #endif // ANUBIS_STRUCTURE_H

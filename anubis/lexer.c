@@ -14,6 +14,10 @@ const char* token_names[] = {
 	[EOI] = "EOI"
 };
 
+void next_char(Lexer* _this) {
+	_this->cchar = _this->source[_this->pos++];
+}
+
 Lexer lexer_new(char* source) {
 	Lexer lexer = {};
 	lexer_reset(&lexer, source);
@@ -26,15 +30,17 @@ void lexer_free(Lexer* lexer) {
 }
 
 int lexer_reset(Lexer* _this, char* source) {
-	if (_this == NULL) {
-		ERROR(EINVAL, "Cannot reset NULL lexer instance");
-		return EINVAL;
-	}
+	INSTANCE_NULL_CHECK_RETURN("Lexer", _this, 0);
+	INSTANCE_NULL_CHECK_RETURN("Source", source, 0);
 	_this->source = source;
 	_this->pos = 0;
-	_this->cchar = ' ';
 	_this->symbol = -1;
 	_this->source_len = strlen(source);
+	if (_this->source_len == 0) {
+		ERROR(EINVAL, "Source must not be empty\n");
+		return 1;
+	}
+	_this->cchar = source[0];
 	_this->is_reading_string = false;
 	_this->string_len = 0;
 	_this->string_pos = 0;
@@ -45,14 +51,13 @@ int lexer_reset(Lexer* _this, char* source) {
 	return 1;
 }
 
-void next_char(Lexer* _this) {
-	_this->cchar = _this->source[_this->pos++];
-}
-
 #define DEFAULT_STRING_LEN 100
 
 #define _LEXER_NULL_CHECK_RETURN(_this, returnValue) INSTANCE_NULL_CHECK_RETURN("lexer", _this, returnValue); INSTANCE_NULL_CHECK_RETURN("lexer->source", _this, returnValue)
 #define _LEXER_NULL_CHECK(_this) INSTANCE_NULL_CHECK("lexer", _this)
+
+#define MAX(a,b) (a < b ? b : a)
+#define MIN(a,b) (a < b ? a : b)
 
 // 0: Finished, 1: Ignore, Other: failure
 int next_string(Lexer* _this) {
@@ -61,7 +66,7 @@ int next_string(Lexer* _this) {
 		return 1;
 	}
 	checked_free(_this->string);
-	if ((_this->string = strndup(_this->source + _this->string_pos, _this->pos - _this->string_pos)) == NULL) {
+	if ((_this->string = strndup(MAX(_this->source + (_this->string_pos - 1), 0), _this->pos - _this->string_pos)) == NULL) {
 		ERROR(ENOMEM, "Unable to extract string in tokenised sequence");
 		return ENOMEM;
 	}
@@ -81,7 +86,7 @@ int next_string(Lexer* _this) {
 
 #define SINGLE_TOKEN_CASE(literal, token) \
 	case literal:\
-		HANDLE_NEXT_STRING\
+		HANDLE_NEXT_STRING;\
 		next_char(_this);\
 		_this->symbol = (token);\
 		break
@@ -93,8 +98,13 @@ int lexer_next_symbol(Lexer* _this) {
 	}
 	int res;
 	bool escape = false;
+	bool single_quoted = false;
+	bool double_quoted = false;
 read:
 	switch (_this->cchar) {
+		case '\0':
+			HANDLE_NEXT_STRING;
+			break;
 		case ' ':
 		case '\t':
 		case '\n':
@@ -102,6 +112,9 @@ read:
 				next_char(_this);
 				escape = false;
 				goto read;
+			}
+			if (single_quoted || double_quoted) {
+				goto string;
 			}
 			HANDLE_NEXT_STRING
 			next_char(_this);
@@ -112,7 +125,19 @@ read:
 		SINGLE_TOKEN_CASE(_TOK_GREATER, GREATER);
 		case '\\':
 			escape = true;
+			goto string;
+		case '"':
+			if (!escape) {
+				double_quoted = !double_quoted;
+			}
+			goto string;
+		case '\'':
+			if (!escape) {
+				single_quoted = !single_quoted;
+			}
+			goto string;
 		default:
+string:
 			if (_this->is_reading_string) {
 				next_char(_this);
 				goto read;
@@ -127,9 +152,10 @@ read:
 				_this->string = calloc(DEFAULT_STRING_LEN, sizeof(char));
 			}
 			_this->string_len = 0;
-			_this->string_pos = _this->pos - 1;
+			_this->string_pos = _this->pos;
 			_this->is_reading_string = true;
 			_this->symbol = STRING;
+			next_char(_this);
 			goto read;
 	}
 	return 1;

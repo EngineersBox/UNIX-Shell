@@ -175,7 +175,6 @@ VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* l
 			ERROR(ENOMEM, "Unable to duplicate modifier target string\n");
 			return NULL;
 		}
-		printf("Modifier: %s\n", ioModifierList[index - 1]->target);
 	} while (lexer_next_symbol(lexer));
 	*count = index;
 	return ioModifierList;

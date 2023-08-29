@@ -69,3 +69,23 @@ void command_table_free(CommandTable* table) {
 	checked_free(table);
 }
 
+void command_table_dump(CommandTable* table) {
+	INSTANCE_NULL_CHECK("CommandTable", table);
+	for (int i = 0; i < table->lineCount; i++) {
+		CommandLine* line = table->lines[i];
+		for (int j = 0; j < line->pipeCount; j++) {
+			Command* cmdArgs = line->pipes[j];
+			printf("[%d] %s [", i, cmdArgs->command);
+			for (int k = 0; k < cmdArgs->argCount; k++) {
+				printf("%s%s", cmdArgs->args[k], k == cmdArgs->argCount - 1 ? "" : ", ");
+			}
+			printf("]\n");
+		}
+		for (int j = 0; j < line->modifiersCount; j++) {
+			IoModifier* ioModifier = line->ioModifiers[j];
+			printf("   [>] %s\n", ioModifier->target);
+
+		}
+		printf("   [&] %s\n", line->bgOp ? "true" : "false");
+	}
+}
