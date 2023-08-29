@@ -16,13 +16,13 @@
 #include "executor.h"
 
 int executor_test_main(int argc, char** argv) {
-	char* string = "echo \"yeah nah\" | wc -c > test.txt & echo \"wait now\"\0";
+	char* string = "/usr/bin/echo \"yeah nah\" | /usr/bin/wc -c > test.txt & /usr/bin/echo \"wait now\" > test2.txt";
 	printf("Executing: %s\n", string);
 	Lexer lexer = lexer_new(string);
 	Parser parser = parser_default();
 	CommandTable* table = parse(&parser, &lexer);
 	command_table_dump(table);
-	//execute(table);
+	execute(table);
 	command_table_free(table);
 	lexer_free(&lexer);
 	return 0;

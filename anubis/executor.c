@@ -10,6 +10,9 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+// NOTE: When implementing path resolution note the following from `man execvp`, implementation should do the same:
+// "If the specified filename includes a slash character, then PATH is ignored, and the file at the specified pathname is executed."
+
 int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 0);
 	// Command structure
@@ -25,7 +28,7 @@ int execute_command_line(CommandLine* line) {
 
 	// Set initial input
 	int fdin;
-	if (infile) {
+	if (infile != NULL) {
 		fdin = open(infile, O_RDONLY);
 	} else {
 		fdin = dup(tmpin);
@@ -39,16 +42,20 @@ int execute_command_line(CommandLine* line) {
 		close(fdin);
 		// Setup output
 		if (i == line->pipeCount - 1) {
-			if (outfile) {
+			if (outfile != NULL) {
 				fdout = open(outfile, O_CREAT | O_WRONLY);
+				fprintf(stderr, "fdout: %d\n", fdout);
 			} else {
 				fdout = dup(tmpout);
+				fprintf(stderr, "tmpout: %d\n", tmpout);
 			}
 		} else {
 			// Not last command (piped)
 			// Create a pipe
 			int fdpipe[2];
-			pipe(fdpipe);
+			if (pipe(fdpipe) == -1) {
+				perror("pipe");
+			}
 			fdout = fdpipe[1];
 			fdin = fdpipe[0];
 		}
@@ -60,9 +67,10 @@ int execute_command_line(CommandLine* line) {
 		// Create child process
 		ret = fork();
 		if (ret == 0) {
-			execvp(line->pipes[i]->command, line->pipes[i]->args);
+			fprintf(stderr, "Executing: %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0]);
+			fprintf(stderr, "EXEC: %d\n", execvp(line->pipes[i]->command, line->pipes[i]->args));
 			perror("execvp");
-			_exit(1);
+			exit(1);
 		}
 	}
 

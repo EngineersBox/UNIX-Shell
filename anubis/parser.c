@@ -80,6 +80,10 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 			return NULL;
 		}
 	}
+	if (index >= size - 1) {
+		HANDLED_REALLOC(args, _this->arg_list_base_size);
+	}
+	args[index++] = NULL;
 	*count = index;
 	return args;
 }
