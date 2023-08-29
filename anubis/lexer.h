@@ -34,6 +34,7 @@ typedef struct Lexer {
 } Lexer;
 
 Lexer lexer_new(char* source);
+void lexer_free(Lexer* lexer);
 
 int lexer_reset(Lexer* _this, char* source);
 int lexer_next_symbol(Lexer* _this);

@@ -1,3 +1,4 @@
+#include "structure.h"
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,24 +19,26 @@ int parser_test_main(int argc, char** argv) {
 	printf("Parsing: %s\n", string);
 	Lexer lexer = lexer_new(string);
 	Parser parser = parser_default();
-	size_t count;
-	CommandTable cmdList = parse(&parser, &lexer, &count);
-	for (int i = 0; i < count; i++) {
-		CommandLine line = cmdList[i];
-		for (int j = 0; j < line.pipeCount; j++) {
-			Command cmdArgs = line.pipes[j];
-			printf("[%d] %s@%p [", i, cmdArgs.command, cmdArgs.command);
-			for (int k = 0; k < cmdArgs.argCount; k++) {
-				printf(" %s", cmdArgs.args[k]);
+	CommandTable* table = parse(&parser, &lexer);
+	for (int i = 0; i < table->lineCount; i++) {
+		CommandLine* line = table->lines[i];
+		for (int j = 0; j < line->pipeCount; j++) {
+			Command* cmdArgs = line->pipes[j];
+			printf("[%d] %s@%p [", i, cmdArgs->command, cmdArgs->command);
+			for (int k = 0; k < cmdArgs->argCount; k++) {
+				printf(" %s", cmdArgs->args[k]);
 			}
 			printf("]\n");
 		}
-		for (int j = 0; j < line.modifiersCount; j++) {
-			IoModifier ioModifier = line.ioModifiers[j];
-			printf("   [>] %s\n", ioModifier.target);
+		for (int j = 0; j < line->modifiersCount; j++) {
+			IoModifier* ioModifier = line->ioModifiers[j];
+			printf("   [>] %s\n", ioModifier->target);
+
 		}
-		printf("   [&] %s\n", line.bgOp ? "true" : "false");
+		printf("   [&] %s\n", line->bgOp ? "true" : "false");
 	}
+	command_table_free(table);
+	lexer_free(&lexer);
 	return 0;
 }
 

@@ -32,6 +32,7 @@
 #include "error.h"
 #include "checks.h"
 #include "lexer.h"
+#include "structure.h"
 
 #define VISIBILITY_PUBLIC
 #define VISIBILITY_PRIVATE static
@@ -84,21 +85,27 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 }
 
 // -1: Failure, 0: Continue, 1: Terminate
-VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Command* commandAndArgs) {
+VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Command** commandAndArgs) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, -1);
 	Token prefix = lexer_current_symbol(lexer);
+	char* command;
 	if (prefix != STRING && prefix != PIPE) {
 		ERROR(EINVAL, "Expected a pipe or subcommand, got %s\n", token_names[prefix]);
 		return -1;
 	} else if (prefix == PIPE && !lexer_next_symbol(lexer)) {
 		ERROR(EINVAL, "Unable to parse command following pipe\n");
 		return -1;
-	} else if ((commandAndArgs->command = strdup(lexer_current_string(lexer))) == NULL) {
+	} else if ((command = strdup(lexer_current_string(lexer))) == NULL) {
 		ERROR(ENOMEM, "unable to duplicate command string\n");
 		return -1;
 	}
-	commandAndArgs->args = parse_args(_this, lexer, &commandAndArgs->argCount);
-	printf("CMD: %s@%p :: %s\n", commandAndArgs->command, commandAndArgs->command, token_names[lexer_current_symbol(lexer)]);
+	size_t argCount;
+	Args args = parse_args(_this, lexer, &argCount);
+	*commandAndArgs = command_new(
+		command,
+		args,
+		argCount
+	);
 	return lexer_current_symbol(lexer) != PIPE;
 } 
 
@@ -112,7 +119,7 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 	}
 	size_t index = 0;
 	do {
-		Command commandAndArgs = {};
+		Command* commandAndArgs;
 		int res = parse_command_and_args(_this, lexer, &commandAndArgs);
 		if (res == -1) {
 			return NULL;
@@ -163,15 +170,12 @@ VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* l
 		} else if (index >= size - 1) {
 			HANDLED_REALLOC(ioModifierList, _this->io_modifier_list_base_size);
 		}
-		ioModifierList[index++] = (IoModifier) {
-			.type = type,
-			.target = strdup(lexer_current_string(lexer))
-		};
-		if (ioModifierList[index - 1].target == NULL) {
+		ioModifierList[index++] = io_modifier_new(type, strdup(lexer_current_string(lexer)));
+		if (ioModifierList[index - 1]->target == NULL) {
 			ERROR(ENOMEM, "Unable to duplicate modifier target string\n");
 			return NULL;
 		}
-		printf("Modifier: %s\n", ioModifierList[index - 1].target);
+		printf("Modifier: %s\n", ioModifierList[index - 1]->target);
 	} while (lexer_next_symbol(lexer));
 	*count = index;
 	return ioModifierList;
@@ -182,43 +186,48 @@ VISIBILITY_PRIVATE BackgroundOp parse_background_op(Parser* _this, Lexer* lexer)
 	return token == AMPERSAND;
 }
 
-VISIBILITY_PRIVATE int parse_command_line(Parser* _this, Lexer* lexer, CommandLine* cmdLine) {
-	INSTANCE_NULL_CHECK_RETURN("parser", _this, 0)
-	PipeList pipes = parse_pipe_list(_this, lexer, &cmdLine->pipeCount);
+VISIBILITY_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) {
+	INSTANCE_NULL_CHECK_RETURN("parser", _this, 0);
+	size_t pipeCount = 0;
+	PipeList pipes = parse_pipe_list(_this, lexer, &pipeCount);
 	if (pipes == NULL) {
-		return 0;
+		return NULL;
 	}
-	IoModifierList ioModifiers = parse_io_modifier_list(_this, lexer, &cmdLine->modifiersCount);
+	size_t modifiersCount = 0;
+	IoModifierList ioModifiers = parse_io_modifier_list(_this, lexer, &modifiersCount);
 	if (ioModifiers == NULL) {
-		return 0;
+		return NULL;
 	}
 	BackgroundOp bgOp = parse_background_op(_this, lexer);
-	cmdLine->pipes = pipes;
-	cmdLine->ioModifiers = ioModifiers;
-	cmdLine->bgOp = bgOp;
-	return 1;
+	return command_line_new(
+		pipes,
+		pipeCount,
+		ioModifiers,
+		modifiersCount,
+		bgOp
+	);
 }
 
-VISIBILITY_PUBLIC CommandTable parse(Parser* _this, Lexer* lexer, size_t* count) {
+VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
+	CommandTable* table = command_table_new();
+	if (table == NULL) return NULL;
 	size_t size = _this->command_list_base_size;
-	CommandTable commandList = calloc(size, sizeof(*commandList));
-	if (commandList == NULL) {
+	table->lines = calloc(size, sizeof(*(table->lines)));
+	if (table == NULL) {
 		ERROR(ENOMEM, "Unable to allocate command list of size %d\n", size);
 		return NULL;
 	}
 	size_t index = 0;
-	int res;
 	while (lexer_next_symbol(lexer) && lexer_current_symbol(lexer) != EOI) {
-		CommandLine cmdLine = {};
-		res = parse_command_line(_this, lexer, &cmdLine);
-		if (!res) {
+		CommandLine* cmdLine = parse_command_line(_this, lexer);
+		if (cmdLine == NULL) {
 			return NULL;
 		} else if (index >= size - 1) {
-			HANDLED_REALLOC(commandList, _this->command_list_base_size);
+			HANDLED_REALLOC(table, _this->command_list_base_size);
 		}
-		commandList[index++] = cmdLine;
+		table->lines[index++] = cmdLine;
 	}
-	*count = index;
-	return commandList;
+	table->lineCount = index;
+	return table;
 }

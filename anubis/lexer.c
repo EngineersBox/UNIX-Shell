@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "error.h"
 #include "checks.h"
+#include "memutils.h"
 
 #include <errno.h>
 #include <string.h>
@@ -17,6 +18,11 @@ Lexer lexer_new(char* source) {
 	Lexer lexer = {};
 	lexer_reset(&lexer, source);
 	return lexer;
+}
+
+void lexer_free(Lexer* lexer) {
+	INSTANCE_NULL_CHECK("Lexer", lexer);
+	checked_free(lexer->string);
 }
 
 int lexer_reset(Lexer* _this, char* source) {
@@ -53,9 +59,8 @@ int next_string(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos <= _this->string_pos) {
 		return 1;
-	} else if (_this->string != NULL) {
-		free(_this->string);
 	}
+	checked_free(_this->string);
 	if ((_this->string = strndup(_this->source + _this->string_pos, _this->pos - _this->string_pos)) == NULL) {
 		ERROR(ENOMEM, "Unable to extract string in tokenised sequence");
 		return ENOMEM;
