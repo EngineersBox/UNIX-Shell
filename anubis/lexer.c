@@ -7,6 +7,11 @@
 #include <string.h>
 #include <stdint.h>
 
+#define _LEXER_NULL_CHECK_RETURN(_this, returnValue) INSTANCE_NULL_CHECK_RETURN("lexer", _this, returnValue); INSTANCE_NULL_CHECK_RETURN("lexer->source", _this, returnValue)
+#define _LEXER_NULL_CHECK(_this) INSTANCE_NULL_CHECK("lexer", _this)
+
+#define DEC_FLOOR(value) ((value) > 0 ? (value) - 1 : (value))
+
 const char* token_names[] = {
 	[AMPERSAND] = "AMPERSAND",
 	[PIPE] = "PIPE",
@@ -15,10 +20,6 @@ const char* token_names[] = {
 	[EOI] = "EOI"
 };
 
-void next_char(Lexer* _this) {
-	_this->cchar = _this->source[_this->pos++];
-}
-
 Lexer lexer_new(char* source) {
 	Lexer lexer = {};
 	lexer_reset(&lexer, source);
@@ -26,14 +27,14 @@ Lexer lexer_new(char* source) {
 }
 
 void lexer_free(Lexer* lexer) {
-	INSTANCE_NULL_CHECK("Lexer", lexer);
+	_LEXER_NULL_CHECK(lexer);
 	checked_free(lexer->string);
 	checked_free(lexer->source);
 }
 
 int lexer_reset(Lexer* _this, char* source) {
-	INSTANCE_NULL_CHECK_RETURN("Lexer", _this, 0);
-	INSTANCE_NULL_CHECK_RETURN("Source", source, 0);
+	_LEXER_NULL_CHECK_RETURN(_this, 0);
+	INSTANCE_NULL_CHECK_RETURN("source", source, 0);
 	checked_free(_this->source);
 	_this->source = strdup(source);
 	_this->pos = 0;
@@ -70,14 +71,6 @@ void lexer_print_state(Lexer* _this) {
 	);
 }
 
-#define DEFAULT_STRING_LEN 100
-
-#define _LEXER_NULL_CHECK_RETURN(_this, returnValue) INSTANCE_NULL_CHECK_RETURN("lexer", _this, returnValue); INSTANCE_NULL_CHECK_RETURN("lexer->source", _this, returnValue)
-#define _LEXER_NULL_CHECK(_this) INSTANCE_NULL_CHECK("lexer", _this)
-
-#define DEC_FLOOR(value) ((value) > 0 ? (value) - 1 : (value))
-#define DEC_INVERT(value) ((value) > 0 ? (value) : 1)
-
 // 0: Finished, 1: Ignore, Other: failure
 int next_string(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
@@ -87,18 +80,18 @@ int next_string(Lexer* _this) {
 	checked_free(_this->string);
 	size_t start = _this->string_pos;
 	size_t end = DEC_FLOOR(_this->pos);
-	fprintf(stderr, "STRING START: %c @ %zu\n", _this->source[start], start);
-	fprintf(stderr, "STRING END  : %c @ %zu\n", _this->source[end - 1], end - 1);
 	_this->string = strndup(&_this->source[start], end - start);
 	_this->string_len = end - start;
-	fprintf(stderr, "STRING: [%s]\n", _this->string);
 	if (_this->string == NULL) {
 		ERROR(ENOMEM, "Unable to extract string in tokenised sequence");
 		return ENOMEM;
 	}
 	_this->is_reading_string = false;
-	lexer_print_state(_this);
 	return 1;
+}
+
+void next_char(Lexer* _this) {
+	_this->cchar = _this->source[_this->pos++];
 }
 
 #define HANDLE_NEXT_STRING \
@@ -116,17 +109,13 @@ int next_string(Lexer* _this) {
 		HANDLE_NEXT_STRING;\
 		next_char(_this);\
 		_this->symbol = (token);\
-		fprintf(stderr, "TOK OUT: %c -> %c\n", literal, _this->cchar);\
 		break
 
 void remove_char(Lexer* _this) {
-	lexer_print_state(_this);
 	memmove(&_this->source[_this->pos - 1], &_this->source[_this->pos], _this->source_len - _this->pos + 1);
-	fprintf(stderr, "REMOVED '%c' STR: [%s]\n", _this->source[_this->pos - 1], _this->source);
 	_this->source_len--;
 	_this->pos--;
 	next_char(_this);
-	lexer_print_state(_this);
 }
 
 int lexer_next_symbol(Lexer* _this) {
@@ -196,7 +185,6 @@ string:
 			_this->string_pos = DEC_FLOOR(_this->pos);
 			_this->is_reading_string = true;
 			_this->symbol = STRING;
-			fprintf(stderr, "NEW STRING: %c %zu\n", _this->source[_this->string_pos], _this->string_pos);
 			next_char(_this);
 			goto read;
 	}

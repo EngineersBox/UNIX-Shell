@@ -92,7 +92,6 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Command** commandAndArgs) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, -1);
 	Token prefix = lexer_current_symbol(lexer);
-	fprintf(stderr, "PREFIX: %s\n", token_names[prefix]);
 	char* command;
 	if (prefix != STRING && prefix != PIPE) {
 		ERROR(EINVAL, "Expected a pipe or subcommand, got %s\n", token_names[prefix]);
@@ -104,7 +103,6 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 		ERROR(ENOMEM, "unable to duplicate command string\n");
 		return -1;
 	}
-	fprintf(stderr, "CMD: %s\n", command);
 	size_t argCount;
 	Args args = parse_args(_this, lexer, &argCount);
 	args[0] = command;
@@ -113,7 +111,6 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 		args,
 		argCount
 	);
-	fprintf(stderr, "CURRENT: %s\n", token_names[lexer_current_symbol(lexer)]);
 	return lexer_current_symbol(lexer) != PIPE;
 } 
 
@@ -136,7 +133,6 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 		}
 		pipes[index++] = commandAndArgs;
 		if (res == 1) {
-			fprintf(stderr, "BREAK\n");
 			break;
 		}
 	} while (true);//while (lexer_next_symbol(lexer));

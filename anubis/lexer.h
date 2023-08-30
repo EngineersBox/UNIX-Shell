@@ -43,4 +43,6 @@ int lexer_next_symbol(Lexer* _this);
 int lexer_current_symbol(Lexer* _this);
 char* lexer_current_string(Lexer* _this);
 
+void lexer_print_state(Lexer* _this);
+
 #endif // ANUBIS_TOKENISER_H
