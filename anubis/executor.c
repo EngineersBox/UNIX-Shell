@@ -1,6 +1,7 @@
 #include "executor.h"
 
 #include "checks.h"
+#include "path.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -9,9 +10,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/wait.h>
-
-// NOTE: When implementing path resolution note the following from `man execvp`, implementation should do the same:
-// "If the specified filename includes a slash character, then PATH is ignored, and the file at the specified pathname is executed."
 
 #define READ_PORT 0
 #define WRITE_PORT 1
