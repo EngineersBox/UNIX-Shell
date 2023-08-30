@@ -2,6 +2,7 @@
 
 #include "checks.h"
 #include "path.h"
+#include "memutils.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -66,7 +67,16 @@ int execute_command_line(CommandLine* line) {
 		if (ret == 0) {
 			// Create child process
 			fprintf(stderr, "Executing: %s %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0], line->pipes[i]->args[1]);
-			execvp(line->pipes[i]->command, line->pipes[i]->args);
+			char* resolved = resolve(line->pipes[i]->command);
+			if (resolved == NULL) {
+				ERROR(EINVAL, "No such file or directory: %s\n", line->pipes[i]->command);
+				return 0;
+			}
+			checked_free(line->pipes[i]->command);
+			line->pipes[i]->command = resolved;
+			line->pipes[i]->args[0] = resolved;
+			fprintf(stderr, "Resolved: %s %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0], line->pipes[i]->args[1]);
+			execv(line->pipes[i]->command, line->pipes[i]->args);
 			perror("execvp");
 			exit(0);
 		}
