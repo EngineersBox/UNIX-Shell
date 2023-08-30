@@ -1,19 +1,10 @@
-#include "structure.h"
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <errno.h> 
-#include <fcntl.h>
-#include <assert.h>
-#include <stdarg.h>
 
 #include "error.h"
 #include "lexer.h"
 #include "parser.h"
 #include "executor.h"
+#include "structure.h"
 
 int executor_test_main(int argc, char** argv) {
 	char* string = "/bin/echo \"yeah nah\"|rev | rev|/bin/wc -c> test.txt & /bin/echo \"wait now\" > test2.txt & /bin/ls -la";

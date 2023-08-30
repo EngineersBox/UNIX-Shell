@@ -15,6 +15,22 @@
 #define READ_PORT 0
 #define WRITE_PORT 1
 
+int exec_child(Command* command) {
+	fprintf(stderr, "Executing: %s %s %s\n", command->command, command->args[0], command->args[1]);
+	char* resolved = resolve(command->command);
+	if (resolved == NULL) {
+		ERROR(EINVAL, "No such file or directory: %s\n", command->command);
+		return 0;
+	}
+	checked_free(command->command);
+	command->command = resolved;
+	command->args[0] = resolved;
+	fprintf(stderr, "Resolved: %s %s %s\n", command->command, command->args[0], command->args[1]);
+	execv(command->command, command->args);
+	perror("execvp");
+	exit(0);
+}
+
 int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 0);
 	// Command structure
@@ -66,19 +82,7 @@ int execute_command_line(CommandLine* line) {
 		ret = fork();
 		if (ret == 0) {
 			// Create child process
-			fprintf(stderr, "Executing: %s %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0], line->pipes[i]->args[1]);
-			char* resolved = resolve(line->pipes[i]->command);
-			if (resolved == NULL) {
-				ERROR(EINVAL, "No such file or directory: %s\n", line->pipes[i]->command);
-				return 0;
-			}
-			checked_free(line->pipes[i]->command);
-			line->pipes[i]->command = resolved;
-			line->pipes[i]->args[0] = resolved;
-			fprintf(stderr, "Resolved: %s %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0], line->pipes[i]->args[1]);
-			execv(line->pipes[i]->command, line->pipes[i]->args);
-			perror("execvp");
-			exit(0);
+			exec_child(line->pipes[i]);
 		}
 	}
 

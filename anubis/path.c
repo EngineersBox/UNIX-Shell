@@ -14,6 +14,7 @@
 
 #define PATH_ENV_DELIMITER ":"
 #define PATH_DELIMITER '/'
+#define PATH_ENV_VAR "PATH"
 
 static char* get_default_path (void) {
 	size_t len = confstr (_CS_PATH, NULL, 0);
@@ -39,7 +40,7 @@ static char* join_paths(const char* dir, const char* file) {
 		delim[0] = PATH_DELIMITER;
 		strcat(path, delim);
 	}
-	// Will never have a slash in it, due to early return condition for resolution
+	// Will never have a slash in it, due to early return condition for resolution via is_path(char*)
 	strcat(path, file);
 	return path;
 }
@@ -63,7 +64,7 @@ static char* resolve_within_directory(char* searchable, char* dirPath) {
 	int n = scandir(dirPath, &dirEntries, directory_filter, alphasort);
 	filename = NULL;
 	bool found = n > 0;
-	while (n--) {
+	while (found && n--) {
 		free(dirEntries[n]);
 	}
 	free(dirEntries);
@@ -89,11 +90,10 @@ static bool is_path(char* searchable) {
 }
 
 char* resolve(char* executable) {
-	// TODO: If executable has a slash in it, just return the executable
 	if (is_path(executable)) {
 		return strdup(executable);
 	}
-	char* path = getenv("PATH");
+	char* path = getenv(PATH_ENV_VAR);
 	if (path == NULL) {
 		path = get_default_path();
 	}
@@ -101,7 +101,8 @@ char* resolve(char* executable) {
 	while (searchable != NULL) {
 		struct stat	sstat;
 		if (stat(searchable, &sstat) != 0) {
-			goto next; // Skip if we can't resolve the path
+			// Skip if we can't resolve the path
+			goto next;
 		} else if (S_ISDIR(sstat.st_mode)) {
 			printf("Directory: %s\n", searchable);
 			char* resolved = resolve_within_directory(executable, searchable);
@@ -112,9 +113,11 @@ char* resolve(char* executable) {
 		}
 		char* slash = strrchr(searchable, PATH_DELIMITER);
 		if (slash && strcmp(slash, searchable)) {
-			return searchable; // File name at searchable path matches given executable name
+			// File name at searchable path matches given executable name
+			return searchable;
 		}
 next:
+		// Tokenise from previously found offset
 		searchable = strtok(NULL, PATH_ENV_DELIMITER);
 	}
 	return NULL;
