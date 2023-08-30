@@ -8,6 +8,7 @@
 #include <dirent.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include "error.h"
 
@@ -79,8 +80,9 @@ static bool is_path(char* searchable) {
 	char* ptr = strchr(searchable, PATH_DELIMITER);
 	if (ptr == NULL) {
 		return false;
-	}
-	if (*(ptr - 1) == '\\') {
+	} else if ((uintptr_t) ptr == (uintptr_t) searchable) {
+		return true;
+	} else if (*(ptr - 1) == '\\') {
 		return is_path(ptr + 1);
 	}
 	return true;
