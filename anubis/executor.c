@@ -13,6 +13,23 @@
 // NOTE: When implementing path resolution note the following from `man execvp`, implementation should do the same:
 // "If the specified filename includes a slash character, then PATH is ignored, and the file at the specified pathname is executed."
 
+#define CREATE_PIPE(index)\
+	if (pipe(pipes[index]) == -1) {\
+		ERROR(errno, "Unable to create pipe %s\n", strerror(errno));\
+		return errno;\
+	}
+
+#define CURRENT_PIPE 0
+#define PREVIOUS_PIPE 1
+#define READ_PORT 0
+#define WRITE_PORT 1
+
+void swap_pipes(int** pipes) {
+	int* current = pipes[CURRENT_PIPE];
+	pipes[CURRENT_PIPE] = pipes[PREVIOUS_PIPE];
+	pipes[PREVIOUS_PIPE] = current;
+}
+
 int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 0);
 	// Command structure
@@ -34,6 +51,14 @@ int execute_command_line(CommandLine* line) {
 		fdin = dup(tmpin);
 	}
 
+	int pipes[2][2];
+	bool uses_pipes = false;
+	if (line->pipeCount > 1) {
+		uses_pipes = true;
+		CREATE_PIPE(CURRENT_PIPE);
+		CREATE_PIPE(PREVIOUS_PIPE);
+	}
+
 	int ret;
 	int fdout;
 	for (int i = 0; i < line->pipeCount; i++) {
@@ -51,12 +76,12 @@ int execute_command_line(CommandLine* line) {
 		} else {
 			// Not last command (piped)
 			// Create a pipe
-			int fdpipe[2];
-			if (pipe(fdpipe) == -1) {
-				perror("pipe");
-			}
-			fdout = fdpipe[1];
-			fdin = fdpipe[0];
+			//fdout = pipes[CURRENT_PIPE][WRITE_PORT];
+			//fdin = pipes[PREVIOUS_PIPE][READ_PORT];
+			int pipes_[2];
+			pipe(pipes_);
+			fdout = pipes_[WRITE_PORT];
+			fdin = pipes_[READ_PORT];
 		}
 		
 		// Redirect output
@@ -67,10 +92,11 @@ int execute_command_line(CommandLine* line) {
 		if (ret == 0) {
 			// Create child process
 			fprintf(stderr, "Executing: %s %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0], line->pipes[i]->args[1]);
-			fprintf(stderr, "EXEC: %d\n", execvp(line->pipes[i]->command, line->pipes[i]->args));
+			execvp(line->pipes[i]->command, line->pipes[i]->args);
 			perror("execvp");
 			exit(0);
 		}
+		if (uses_pipes) swap_pipes((int**) pipes);
 	}
 
 	// Restore in/out defaults
@@ -83,13 +109,15 @@ int execute_command_line(CommandLine* line) {
 		// Wait for last command
 		waitpid(ret, NULL, 0);
 	}
+
+	// Close pipes
+	if (uses_pipes) {
+		close(pipes[PREVIOUS_PIPE][READ_PORT]);
+		close(pipes[PREVIOUS_PIPE][WRITE_PORT]);
+	}
+
 	return 1;
 }
-
-#define CURRENT 0
-#define PREVIOUS 1
-#define READ 0
-#define WRITE 1
 
 static int pipes_available = 0;
 
@@ -112,10 +140,10 @@ static bool connect(int pipes[2][2], bool isLast, int index) {
 		return true;
 	}
 	if (isLast || index != 0) {
-		dup2(pipes[PREVIOUS][READ], STDIN_FILENO);
+		dup2(pipes[PREVIOUS_PIPE][READ_PORT], STDIN_FILENO);
 	}
 	if (index == 0 || !isLast) {
-		dup2(pipes[CURRENT][WRITE], STDOUT_FILENO);
+		dup2(pipes[CURRENT_PIPE][WRITE_PORT], STDOUT_FILENO);
 	}
 	return true;
 
@@ -130,41 +158,29 @@ static bool fork_pipe_redirect(CommandLine* line, int pipes[2][2], bool isLast, 
 	return false;
 }
 
-void alternate(int** pipes) {
-	int* current = pipes[CURRENT];
-	pipes[CURRENT] = pipes[PREVIOUS];
-	pipes[PREVIOUS] = current;
-}
-
 int execute_command_line2(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 0);
 	pipes_available = line->pipeCount > 1;
 	int pipes[2][2];
-	if (pipes_available && pipe(pipes[CURRENT]) == -1) {
+	if (pipes_available > 1 && pipe(pipes[CURRENT_PIPE]) == -1) {
 		perror("pipe");
-	} else if (pipes_available && pipe(pipes[PREVIOUS]) == -1) {
+	} else if (pipes_available > 2 && pipe(pipes[PREVIOUS_PIPE]) == -1) {
 		perror("pipe");
 	}
 	for (int i = 0; i < line->pipeCount; i++) {
 		if (fork_pipe_redirect(line, pipes, i == (line->pipeCount - 1), i)) {
-			for (int j = 0; j < strlen(line->pipes[i]->command) + 1; j++) {
-				fprintf(stderr, "%d\n", line->pipes[i]->command[j]);
-			}
-			for (int j = 0; j < strlen(line->pipes[i]->args[1]) + 1; j++) {
-				fprintf(stderr, "%d\n", line->pipes[i]->args[1][j]);
-			}
-			execvp(line->pipes[i]->command + 1, line->pipes[i]->args);
+			fprintf(stderr, "Executing: %s %s %s\n", line->pipes[i]->command, line->pipes[i]->args[0], line->pipes[i]->args[1]);
+			execvp(line->pipes[i]->command, line->pipes[i]->args);
 			perror("execvp");
 			exit(1);
 		}
-		if (pipes_available) alternate((int**) pipes);
 	}
 	if (!line->bgOp) {
 		while (wait(NULL) >= 0);
 	}
 	if (pipes_available) {
-		close(pipes[PREVIOUS][READ]);
-		close(pipes[PREVIOUS][WRITE]);
+		close(pipes[PREVIOUS_PIPE][READ_PORT]);
+		close(pipes[PREVIOUS_PIPE][WRITE_PORT]);
 	}
 	return 0;
 }

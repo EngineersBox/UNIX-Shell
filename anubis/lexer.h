@@ -39,7 +39,6 @@ void lexer_free(Lexer* lexer);
 
 int lexer_reset(Lexer* _this, char* source);
 int lexer_next_symbol(Lexer* _this);
-void lexer_unget_symbol(Lexer* _this);
 
 int lexer_current_symbol(Lexer* _this);
 char* lexer_current_string(Lexer* _this);
