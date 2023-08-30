@@ -57,6 +57,7 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);	
 	if (lexer_current_symbol(lexer) != STRING) {
 		*count = 0;
+		ERROR(EINVAL, "Expected a string, got %s\n", token_names[lexer_current_symbol(lexer)]);
 		return NULL;
 	}
 	size_t size = _this->arg_list_base_size;
@@ -66,7 +67,7 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 		return NULL;
 	}
 	Token symbol;
-	size_t index = 0;
+	size_t index = 1;
 	 while (lexer_next_symbol(lexer)) {	
 		symbol = lexer_current_symbol(lexer);
 		if (symbol != STRING) {
@@ -105,6 +106,7 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 	}
 	size_t argCount;
 	Args args = parse_args(_this, lexer, &argCount);
+	args[0] = command;
 	*commandAndArgs = command_new(
 		command,
 		args,

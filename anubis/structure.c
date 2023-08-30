@@ -15,7 +15,7 @@ Command* command_new(char* command, Args args, size_t argCount) {
 void command_free(Command* command) {
 	INSTANCE_NULL_CHECK("command", command);
 	checked_free(command->command);
-	checked_array_free(command->args, command->argCount, checked_free);
+	checked_array_free(command->args + 1, command->argCount - 1, checked_free);
 	checked_free(command->args);
 	checked_free(command);
 }
@@ -75,17 +75,17 @@ void command_table_dump(CommandTable* table) {
 		CommandLine* line = table->lines[i];
 		for (int j = 0; j < line->pipeCount; j++) {
 			Command* cmdArgs = line->pipes[j];
-			printf("[%d] %s [", i, cmdArgs->command);
+			fprintf(stderr, "[%d] %s [", i, cmdArgs->command);
 			for (int k = 0; k < cmdArgs->argCount; k++) {
-				printf("%s%s", cmdArgs->args[k], k == cmdArgs->argCount - 1 ? "" : ", ");
+				fprintf(stderr, "%s%s", cmdArgs->args[k], k == cmdArgs->argCount - 1 ? "" : ",");
 			}
-			printf("]\n");
+			fprintf(stderr, "]\n");
 		}
 		for (int j = 0; j < line->modifiersCount; j++) {
 			IoModifier* ioModifier = line->ioModifiers[j];
-			printf("   [>] %s\n", ioModifier->target);
+			fprintf(stderr, "   [>] %s\n", ioModifier->target);
 
 		}
-		printf("   [&] %s\n", line->bgOp ? "true" : "false");
+		fprintf(stderr, "   [&] %s\n", line->bgOp ? "true" : "false");
 	}
 }

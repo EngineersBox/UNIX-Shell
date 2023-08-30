@@ -5,6 +5,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdint.h>
 
 const char* token_names[] = {
 	[AMPERSAND] = "AMPERSAND",
@@ -27,12 +28,14 @@ Lexer lexer_new(char* source) {
 void lexer_free(Lexer* lexer) {
 	INSTANCE_NULL_CHECK("Lexer", lexer);
 	checked_free(lexer->string);
+	checked_free(lexer->source);
 }
 
 int lexer_reset(Lexer* _this, char* source) {
 	INSTANCE_NULL_CHECK_RETURN("Lexer", _this, 0);
 	INSTANCE_NULL_CHECK_RETURN("Source", source, 0);
-	_this->source = source;
+	checked_free(_this->source);
+	_this->source = strdup(source);
 	_this->pos = 0;
 	_this->symbol = -1;
 	_this->source_len = strlen(source);
@@ -56,8 +59,22 @@ int lexer_reset(Lexer* _this, char* source) {
 #define _LEXER_NULL_CHECK_RETURN(_this, returnValue) INSTANCE_NULL_CHECK_RETURN("lexer", _this, returnValue); INSTANCE_NULL_CHECK_RETURN("lexer->source", _this, returnValue)
 #define _LEXER_NULL_CHECK(_this) INSTANCE_NULL_CHECK("lexer", _this)
 
-#define MAX(a,b) (a < b ? b : a)
-#define MIN(a,b) (a < b ? a : b)
+#define MAX(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+#define DEC_FLOOR(value) ((value) > 0 ? (value) - 1 : (value))
+#define DEC_INVERT(value) ((value) > 0 ? (value) : 1)
+
+void strip_ending(char* string) {
+	for (int i = MAX(strlen(string), 0); i >= 0; i--) {
+		if (_IS_STRIPPABLE(string[i])) {
+			string[i] = '\0';
+			continue;
+		}
+		return;
+	}
+}
 
 // 0: Finished, 1: Ignore, Other: failure
 int next_string(Lexer* _this) {
@@ -66,10 +83,15 @@ int next_string(Lexer* _this) {
 		return 1;
 	}
 	checked_free(_this->string);
-	if ((_this->string = strndup(MAX(_this->source + (_this->string_pos - 1), 0), _this->pos - _this->string_pos)) == NULL) {
+	_this->string = strndup(
+		_this->source + DEC_FLOOR(_this->string_pos),
+		_this->pos - DEC_INVERT(_this->string_pos)
+	);
+	if (_this->string == NULL) {
 		ERROR(ENOMEM, "Unable to extract string in tokenised sequence");
 		return ENOMEM;
 	}
+	//strip_ending(_this->string);
 	_this->is_reading_string = false;
 	return 0;
 }
@@ -90,6 +112,12 @@ int next_string(Lexer* _this) {
 		next_char(_this);\
 		_this->symbol = (token);\
 		break
+
+void remove_char(Lexer* _this) {
+	memmove(&_this->source[_this->pos - 1], &_this->source[_this->pos], _this->source_len - _this->pos + 1);
+	_this->source_len--;
+	_this->cchar = _this->source[_this->pos - 1];
+}
 
 int lexer_next_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
@@ -129,11 +157,24 @@ read:
 		case '"':
 			if (!escape) {
 				double_quoted = !double_quoted;
+				if (!double_quoted) {
+					remove_char(_this);
+				} else {
+					next_char(_this);
+				}
+				fprintf(stderr, "DQ: %s\n", double_quoted ? "t" : "f");
+				goto read;
 			}
 			goto string;
 		case '\'':
 			if (!escape) {
 				single_quoted = !single_quoted;
+				if (!double_quoted) {
+					remove_char(_this);
+				} else {
+					next_char(_this);
+				}
+				goto read;
 			}
 			goto string;
 		default:
@@ -163,7 +204,8 @@ string:
 
 void lexer_unget_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK(_this);
-	_this->cchar = _this->source[--_this->pos];
+	_this->pos = DEC_FLOOR(_this->pos);
+	_this->cchar = _this->source[_this->pos];
 }
 
 int lexer_current_symbol(Lexer* _this) {

@@ -16,8 +16,8 @@
 #include "executor.h"
 
 int executor_test_main(int argc, char** argv) {
-	char* string = "/usr/bin/echo \"yeah nah\" | /usr/bin/wc -c > test.txt & /usr/bin/echo \"wait now\" > test2.txt";
-	printf("Executing: %s\n", string);
+	char* string = "/bin/echo \"yeah nah\" | /bin/wc -c > test.txt & /bin/echo \"wait now\" > test2.txt & /bin/ls -la";
+	fprintf(stderr, "Executing: %s\n", string);
 	Lexer lexer = lexer_new(string);
 	Parser parser = parser_default();
 	CommandTable* table = parse(&parser, &lexer);

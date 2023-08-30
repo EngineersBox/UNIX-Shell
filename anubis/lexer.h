@@ -10,6 +10,7 @@
 
 #define _IS_RESERVED(c) (c) == _TOK_AMPERSAND || (c) == _TOK_PIPE || (c) == _TOK_GREATER
 #define _IS_WHITESPACE(c) (c) == ' ' || (c) == '\t' || (c) == '\n'
+#define _IS_STRIPPABLE(c) (c) == '"' || (c) == '\''
 
 typedef enum Token {
 	AMPERSAND,
