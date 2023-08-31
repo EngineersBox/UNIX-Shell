@@ -53,7 +53,6 @@ static int exec_child(Command* command, int selfPipe[2]) {
 	fprintf(stderr, "Executing: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	char* resolved = path_resolve(command->command);
 	if (resolved == NULL) {
-		fprintf(stderr, "Failed to resolve in path: %s\n", command->command);
 		self_pipe_send(selfPipe, ENOENT);
 		exit(0);
 	}
@@ -65,21 +64,21 @@ static int exec_child(Command* command, int selfPipe[2]) {
 	exit(0);
 }
 
-static int configure_output(int i, size_t pipeCount, IO stdio, IO fileio, char* outfile) {
-	if (i == pipeCount - 1) {
+static int configure_output(bool isLast, IO stdio, IO fileio, char* outfile) {
+	if (isLast) {
 		if (outfile != NULL) {
 			fileio.out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
 		} else {
 			fileio.out = dup(stdio.out);
 		}
-	} else {
-		// Not last command (piped)
-		// Create a pipe
-		int pipes[2];
-		errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
-		fileio.out = pipes[WRITE_PORT];
-		fileio.in = pipes[READ_PORT];
+		return 0;
 	}
+	// Not last command (piped)
+	// Create a pipe
+	int pipes[2];
+	errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
+	fileio.out = pipes[WRITE_PORT];
+	fileio.in = pipes[READ_PORT];
 	return 0;
 }
 
@@ -127,7 +126,7 @@ static int execute_command_line(CommandLine* line) {
 
 		// Setup output
 		transparent_return(configure_output(
-			i, line->pipeCount,
+			i == line->pipeCount -1,
 			stdio, fileio,
 			outfile
 		));
