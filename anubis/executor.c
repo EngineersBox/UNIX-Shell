@@ -18,6 +18,36 @@
 #define READ_PORT 0
 #define WRITE_PORT 1
 
+typedef struct IO {
+	int in;
+	int out;
+} IO;
+
+static IO io_new() {
+	return (IO) { 0 };
+}
+
+static IO stdio_save() {
+	return (IO) {
+		dup(STDIN_FILENO),
+		dup(STDOUT_FILENO)
+	};
+}
+
+inline static int io_restore(IO* stdio) {
+	errno_return(dup2(stdio->in, STDIN_FILENO), -1, "Unable to duplicate STDIN");
+	errno_return(dup2(stdio->out, STDOUT_FILENO), -1, "Unable to duplicate STDOUT");
+	errno_return(close(stdio->in), -1, "Unable to close STDIN");
+	errno_return(close(stdio->out), -1, "Unable to close STDOUT");
+	return 0;
+}
+
+inline static int redirect(int fd, int std) {
+	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std,);
+	errno_return(close(fd), -1, "Unable to close %d", fd,);
+	return 0;
+}
+
 int exec_child(Command* command, int selfPipe[2]) {
 	close(selfPipe[READ_PORT]);
 	fprintf(stderr, "Executing: %s %s %s\n", command->command, command->args[0], command->args[1]);
@@ -39,6 +69,9 @@ int exec_child(Command* command, int selfPipe[2]) {
 int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
 	if (line->pipeCount == 1) {
+		// TODO: These builtins should not be treated any differently from regular executables.
+		//       Refactor these to be invoked as child procs which can access stdin/stdout within
+		//       a chain of pipes.
 		Command* command = line->pipes[0];
 		size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
 		int ret = builtin_execv(
@@ -59,52 +92,43 @@ int execute_command_line(CommandLine* line) {
 	}
 
 	// Save stdin/stdout
-	int tmpin = dup(STDIN_FILENO);
-	int tmpout = dup(STDOUT_FILENO);
+	IO stdio = stdio_save();
+	IO fileio = io_new();
 
 	// Set initial input
-	int fdin;
 	if (infile != NULL) {
-		fdin = open(infile, O_RDONLY);
+		fileio.in = open(infile, O_RDONLY);
 	} else {
-		fdin = dup(tmpin);
+		fileio.in = dup(stdio.in);
 	}
 
 	int ret;
-	int fdout;
 	int err = 0;
 	for (int i = 0; i < line->pipeCount; i++) {
 		// Redirect input
-		dup2(fdin, STDIN_FILENO);
-		close(fdin);
+		transparent_return(redirect(fileio.in, STDIN_FILENO));
 
 		// Setup output
 		if (i == line->pipeCount - 1) {
 			if (outfile != NULL) {
-				fdout = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+				fileio.out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
 			} else {
-				fdout = dup(tmpout);
+				fileio.out = dup(stdio.out);
 			}
 		} else {
 			// Not last command (piped)
 			// Create a pipe
 			int pipes_[2];
-			pipe(pipes_);
-			fdout = pipes_[WRITE_PORT];
-			fdin = pipes_[READ_PORT];
+			errno_return(pipe(pipes_), -1, "Unable to construct pipe to connect commands");
+			fileio.out = pipes_[WRITE_PORT];
+			fileio.in = pipes_[READ_PORT];
 		}
 		
 		// Redirect output
-		dup2(fdout, STDOUT_FILENO);
-		close(fdout);
+		transparent_return(redirect(fileio.out, STDOUT_FILENO));
 
-		// Self pipe for error comms trick: https://lkml.org/lkml/2006/7/10/300
 		int selfPipe[2];
-		ret = self_pipe_new(selfPipe);
-		if (ret) {
-			ERROR(ret, "Could not create selfPipe: %s\n", strerror(ret));
-			return ret;
-		}
+		ret_return(self_pipe_new(selfPipe), != 0, "Unable to create selfPipe");
 		ret = fork();
 		if (ret == 0) {
 			// Create child process
@@ -115,22 +139,15 @@ int execute_command_line(CommandLine* line) {
 			close(selfPipe[READ_PORT]);
 			return err;
 		}
-		ret = self_pipe_free(selfPipe);
-		if (ret) {
-			ERROR(ret, "Unable to free selfPipe: %s\n", strerror(ret));
-			return ret;
-		}
+		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
 	}
 
 	// Restore in/out defaults
-	dup2(tmpin, STDIN_FILENO);
-	dup2(tmpout, STDOUT_FILENO);
-	close(tmpin);
-	close(tmpout);
+	transparent_return(io_restore(&stdio));
 
 	if (!line->bgOp) {
-		// Wait for last command
-		waitpid(ret, NULL, 0);
+		// Wait for commands
+		while (wait(NULL) >= 0);
 	}
 
 	return 0;

@@ -6,7 +6,7 @@
 
 typedef char** Args;
 
-typedef struct Command {
+typedef struct __attribute__((__packed__)) Command {
 	size_t argCount;
 	char* command;
 	Args args;
@@ -33,7 +33,7 @@ typedef IoModifier** IoModifierList;
 
 typedef bool BackgroundOp;
 
-typedef struct CommandLine {
+typedef struct __attribute__((__packed__)) CommandLine {
 	size_t pipeCount;
 	size_t modifiersCount;
 	PipeList pipes;

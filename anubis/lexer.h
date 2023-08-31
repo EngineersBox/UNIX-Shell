@@ -22,7 +22,7 @@ typedef enum Token {
 
 extern const char* token_names[];
 
-typedef struct Lexer {
+typedef struct __attribute__((__packed__)) Lexer {
 	size_t pos;
 	int cchar;
 	int symbol;
