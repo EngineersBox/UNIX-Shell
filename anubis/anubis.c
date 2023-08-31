@@ -5,9 +5,11 @@
 #include "parser.h"
 #include "executor.h"
 #include "structure.h"
+#include "path.h"
 
 int executor_test_main(int argc, char** argv) {
-	char* string = "/bin/echo \"yeah nah\"|rev | rev|/bin/wc -c> test.txt & /bin/echo \"wait now\" > test2.txt & ./next.sh > other.txt & /bin/ls -la";
+	path_init();
+	char* string = "/bin/echo \"yeah nah\"|rev | rev|/bin/wc -c> test.txt & /bin/echo \"wait now\" > test2.txt & ./next.sh > other.txt & path & ls -la";
 	fprintf(stderr, "Executing: %s\n", string);
 	Lexer lexer = lexer_new(string);
 	Parser parser = parser_default();
@@ -16,6 +18,7 @@ int executor_test_main(int argc, char** argv) {
 	execute(table);
 	command_table_free(table);
 	lexer_free(&lexer);
+	path_free();
 	return 0;
 }
 
@@ -49,7 +52,21 @@ int lexer_test_main(int argc, char** argv) {
 				break;
 		}
 	}
-    return 0;
+	return 0;
+}
+
+int path_text_main(int argc, char** argv) {
+	path_init();
+	path_clear();
+	printf("%s\n",path);
+	char* paths[2] = {
+		"/var/lib",
+		"/etc/test/stuff"
+	};
+	printf("%d\n",path_add(paths, 2));
+	printf("%s\n",path);
+	path_free();
+	return 0;
 }
 
 // TODO: implement your shell!

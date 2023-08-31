@@ -1,7 +1,7 @@
 #include "structure.h"
 
 #include "checks.h"
-#include "memutils.h"
+#include "mem_utils.h"
 
 Command* command_new(char* command, Args args, size_t argCount) {
 	Command* cmd = malloc(sizeof(*cmd));

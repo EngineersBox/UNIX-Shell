@@ -1,9 +1,5 @@
 #include "executor.h"
 
-#include "checks.h"
-#include "path.h"
-#include "memutils.h"
-
 #include <stddef.h>
 #include <stdio.h>
 #include <sys/fcntl.h>
@@ -12,27 +8,49 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+#include "checks.h"
+#include "path.h"
+#include "mem_utils.h"
+#include "builtin.h"
+#include "math_utils.h"
+#include "self_pipe.h"
+
 #define READ_PORT 0
 #define WRITE_PORT 1
 
-int exec_child(Command* command) {
+int exec_child(Command* command, int selfPipe[2]) {
+	close(selfPipe[READ_PORT]);
 	fprintf(stderr, "Executing: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	char* resolved = resolve(command->command);
 	if (resolved == NULL) {
-		ERROR(EINVAL, "No such file or directory: %s\n", command->command);
-		return 0;
+		fprintf(stderr, "Failed to resolve in path: %s\n", command->command);
+		self_pipe_send(selfPipe, ENOENT);
+		exit(0);
 	}
 	checked_free(command->command);
 	command->command = resolved;
 	command->args[0] = resolved;
 	fprintf(stderr, "Resolved: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	execv(command->command, command->args);
-	perror("execvp");
+	write(selfPipe[WRITE_PORT], &errno, sizeof(int));
 	exit(0);
 }
 
 int execute_command_line(CommandLine* line) {
-	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 0);
+	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
+	if (line->pipeCount == 1) {
+		Command* command = line->pipes[0];
+		size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
+		int ret = builtin_execv(
+			command->command,
+			argCount == 0 ? NULL : &command->args[1],
+			argCount
+		);
+		if (ret != -1) {
+			return ret;
+		}
+	}
+
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
 	char* outfile = NULL;
@@ -54,6 +72,8 @@ int execute_command_line(CommandLine* line) {
 
 	int ret;
 	int fdout;
+	int count = 0;
+	int err = 0;
 	for (int i = 0; i < line->pipeCount; i++) {
 		// Redirect input
 		dup2(fdin, STDIN_FILENO);
@@ -79,10 +99,28 @@ int execute_command_line(CommandLine* line) {
 		dup2(fdout, STDOUT_FILENO);
 		close(fdout);
 
+		// Self pipe for error comms trick: https://lkml.org/lkml/2006/7/10/300
+		int selfPipe[2];
+		ret = self_pipe_new(selfPipe);
+		if (ret) {
+			ERROR(ret, "Could not create selfPipe: %s\n", strerror(ret));
+			return ret;
+		}
 		ret = fork();
 		if (ret == 0) {
 			// Create child process
-			exec_child(line->pipes[i]);
+			exec_child(line->pipes[i], selfPipe);
+		}
+		count = self_pipe_poll(selfPipe, &err);
+		if (count) {
+			ERROR(err, "%s: %s\n", line->pipes[i]->command, strerror(err));
+			close(selfPipe[READ_PORT]);
+			return err;
+		}
+		ret = self_pipe_free(selfPipe);
+		if (ret) {
+			ERROR(ret, "Unable to free selfPipe: %s\n", strerror(ret));
+			return ret;
 		}
 	}
 
@@ -97,14 +135,14 @@ int execute_command_line(CommandLine* line) {
 		waitpid(ret, NULL, 0);
 	}
 
-	return 1;
+	return 0;
 }
 
 int execute(CommandTable* table) {
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, 0);
 	int ret;
 	for (int i = 0; i < table->lineCount; i++) {
-		if ((ret = execute_command_line(table->lines[i])) != 1) {
+		if ((ret = execute_command_line(table->lines[i])) != 0) {
 			return ret;
 		}
 	}

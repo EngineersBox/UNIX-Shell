@@ -1,7 +1,8 @@
 #include "lexer.h"
 #include "error.h"
 #include "checks.h"
-#include "memutils.h"
+#include "mem_utils.h"
+#include "math_utils.h"
 
 #include <errno.h>
 #include <string.h>
@@ -9,8 +10,6 @@
 
 #define _LEXER_NULL_CHECK_RETURN(_this, returnValue) INSTANCE_NULL_CHECK_RETURN("lexer", _this, returnValue); INSTANCE_NULL_CHECK_RETURN("lexer->source", _this, returnValue)
 #define _LEXER_NULL_CHECK(_this) INSTANCE_NULL_CHECK("lexer", _this)
-
-#define DEC_FLOOR(value) ((value) > 0 ? (value) - 1 : (value))
 
 const char* token_names[] = {
 	[AMPERSAND] = "AMPERSAND",

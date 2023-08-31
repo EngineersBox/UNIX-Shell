@@ -228,7 +228,7 @@ VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 		if (cmdLine == NULL) {
 			return NULL;
 		} else if (index >= size - 1) {
-			HANDLED_REALLOC(table, _this->command_list_base_size);
+			HANDLED_REALLOC(table->lines, _this->command_list_base_size);
 		}
 		table->lines[index++] = cmdLine;
 	}
