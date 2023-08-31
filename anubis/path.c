@@ -106,7 +106,7 @@ char* resolve(char* executable) {
 		} else if (S_ISDIR(sstat.st_mode)) {
 			printf("Directory: %s\n", searchable);
 			char* resolved = resolve_within_directory(executable, searchable);
-			if (resolved != NULL) {
+			if (resolved != NULL && access(resolved, F_OK | X_OK) == 0) {
 				return resolved;
 			}
 			goto next;
