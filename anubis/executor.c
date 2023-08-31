@@ -32,7 +32,7 @@ int exec_child(Command* command, int selfPipe[2]) {
 	command->args[0] = resolved;
 	fprintf(stderr, "Resolved: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	execv(command->command, command->args);
-	write(selfPipe[WRITE_PORT], &errno, sizeof(int));
+	self_pipe_send(selfPipe, errno);
 	exit(0);
 }
 
@@ -72,7 +72,6 @@ int execute_command_line(CommandLine* line) {
 
 	int ret;
 	int fdout;
-	int count = 0;
 	int err = 0;
 	for (int i = 0; i < line->pipeCount; i++) {
 		// Redirect input
@@ -111,8 +110,7 @@ int execute_command_line(CommandLine* line) {
 			// Create child process
 			exec_child(line->pipes[i], selfPipe);
 		}
-		count = self_pipe_poll(selfPipe, &err);
-		if (count) {
+		if (self_pipe_poll(selfPipe, &err)) {
 			ERROR(err, "%s: %s\n", line->pipes[i]->command, strerror(err));
 			close(selfPipe[READ_PORT]);
 			return err;
