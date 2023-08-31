@@ -120,7 +120,7 @@ static bool is_path(char* searchable) {
 	return true;
 }
 
-char* resolve(char* executable) {
+char* path_resolve(char* executable) {
 	if (is_path(executable)) {
 		return strdup(executable);
 	}

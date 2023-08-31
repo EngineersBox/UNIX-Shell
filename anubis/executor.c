@@ -48,25 +48,42 @@ inline static int redirect(int fd, int std) {
 	return 0;
 }
 
-int exec_child(Command* command, int selfPipe[2]) {
+static int exec_child(Command* command, int selfPipe[2]) {
 	close(selfPipe[READ_PORT]);
 	fprintf(stderr, "Executing: %s %s %s\n", command->command, command->args[0], command->args[1]);
-	char* resolved = resolve(command->command);
+	char* resolved = path_resolve(command->command);
 	if (resolved == NULL) {
 		fprintf(stderr, "Failed to resolve in path: %s\n", command->command);
 		self_pipe_send(selfPipe, ENOENT);
 		exit(0);
 	}
 	checked_free(command->command);
-	command->command = resolved;
-	command->args[0] = resolved;
+	command->command = command->args[0] = resolved;
 	fprintf(stderr, "Resolved: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	execv(command->command, command->args);
 	self_pipe_send(selfPipe, errno);
 	exit(0);
 }
 
-int execute_command_line(CommandLine* line) {
+static int configure_output(int i, size_t pipeCount, IO stdio, IO fileio, char* outfile) {
+	if (i == pipeCount - 1) {
+		if (outfile != NULL) {
+			fileio.out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+		} else {
+			fileio.out = dup(stdio.out);
+		}
+	} else {
+		// Not last command (piped)
+		// Create a pipe
+		int pipes[2];
+		errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
+		fileio.out = pipes[WRITE_PORT];
+		fileio.in = pipes[READ_PORT];
+	}
+	return 0;
+}
+
+static int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
 	if (line->pipeCount == 1) {
 		// TODO: These builtins should not be treated any differently from regular executables.
@@ -109,20 +126,11 @@ int execute_command_line(CommandLine* line) {
 		transparent_return(redirect(fileio.in, STDIN_FILENO));
 
 		// Setup output
-		if (i == line->pipeCount - 1) {
-			if (outfile != NULL) {
-				fileio.out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
-			} else {
-				fileio.out = dup(stdio.out);
-			}
-		} else {
-			// Not last command (piped)
-			// Create a pipe
-			int pipes_[2];
-			errno_return(pipe(pipes_), -1, "Unable to construct pipe to connect commands");
-			fileio.out = pipes_[WRITE_PORT];
-			fileio.in = pipes_[READ_PORT];
-		}
+		transparent_return(configure_output(
+			i, line->pipeCount,
+			stdio, fileio,
+			outfile
+		));
 		
 		// Redirect output
 		transparent_return(redirect(fileio.out, STDOUT_FILENO));
