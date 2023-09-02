@@ -3,6 +3,7 @@
 #include "checks.h"
 #include "mem_utils.h"
 #include "math_utils.h"
+#include "visibility.h"
 
 #include <errno.h>
 #include <string.h>
@@ -19,7 +20,7 @@ const char* token_names[] = {
 	[EOI] = "EOI"
 };
 
-Lexer* lexer_new(char* source) {
+VISIBILITY_PUBLIC Lexer* lexer_new(char* source) {
 	Lexer* lexer = malloc(sizeof(*lexer));
 	lexer->source = NULL;
 	lexer->string = NULL;
@@ -27,7 +28,7 @@ Lexer* lexer_new(char* source) {
 	return lexer;
 }
 
-void lexer_free(Lexer* lexer) {
+VISIBILITY_PUBLIC void lexer_free(Lexer* lexer) {
 	if (lexer == NULL) {
 		return;
 	}
@@ -36,7 +37,7 @@ void lexer_free(Lexer* lexer) {
 	checked_free(lexer);
 }
 
-int lexer_reset(Lexer* _this, char* source) {
+VISIBILITY_PUBLIC int lexer_reset(Lexer* _this, char* source) {
 	_LEXER_NULL_CHECK_RETURN(_this, 0);
 	INSTANCE_NULL_CHECK_RETURN("source", source, 0);
 	checked_free(_this->source);
@@ -59,7 +60,7 @@ int lexer_reset(Lexer* _this, char* source) {
 	return 1;
 }
 
-void lexer_print_state(Lexer* _this) {
+VISIBILITY_PUBLIC void lexer_print_state(Lexer* _this) {
 	fprintf(
 		stderr,
 		"STATE: {\n\tPOS: %zu\n\tCHAR: %c\n\tSYMBOL: %s\n\tSOURCE LEN: %zu\n\tSOURCE: %s\n\tIS READING STRING: %s\n\tSTRING LEN: %zu\n\tSTRING POS: %zu\n\tSTRING:%s\n}\n",
@@ -76,7 +77,7 @@ void lexer_print_state(Lexer* _this) {
 }
 
 // 0: Finished, 1: Ignore, Other: failure
-int next_string(Lexer* _this) {
+VISIBILITY_PRIVATE int next_string(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos < _this->string_pos) {
 		return 0;
@@ -94,7 +95,7 @@ int next_string(Lexer* _this) {
 	return 1;
 }
 
-void next_char(Lexer* _this) {
+VISIBILITY_TRANSPARENT void next_char(Lexer* _this) {
 	_this->cchar = _this->source[_this->pos++];
 }
 
@@ -118,14 +119,14 @@ void next_char(Lexer* _this) {
 		}\
 		break
 
-void remove_char(Lexer* _this) {
+VISIBILITY_TRANSPARENT void remove_char(Lexer* _this) {
 	memmove(&_this->source[_this->pos - 1], &_this->source[_this->pos], _this->source_len - _this->pos + 1);
 	_this->source_len--;
 	_this->pos--;
 	next_char(_this);
 }
 
-int lexer_next_symbol(Lexer* _this) {
+VISIBILITY_PUBLIC int lexer_next_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos >= _this->source_len - 1) {
 		_this->symbol = EOI;
@@ -200,12 +201,12 @@ string:
 	return 1;
 }
 
-int lexer_current_symbol(Lexer* _this) {
+VISIBILITY_PUBLIC int lexer_current_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	return _this->symbol;
 }
 
-char* lexer_current_string(Lexer* _this) {
+VISIBILITY_PUBLIC char* lexer_current_string(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, NULL);
 	return _this->string;
 }

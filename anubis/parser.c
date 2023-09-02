@@ -34,9 +34,7 @@
 #include "checks.h"
 #include "lexer.h"
 #include "structure.h"
-
-#define VISIBILITY_PUBLIC
-#define VISIBILITY_PRIVATE static
+#include "visibility.h"
 
 Parser parser_default() {
 	return (Parser) {

@@ -13,6 +13,7 @@
 #include "error.h"
 #include "checks.h"
 #include "mem_utils.h"
+#include "visibility.h"
 
 #define PATH_DELIMITER '/'
 
@@ -22,7 +23,7 @@ static char* initialPath = "/bin";
 char* path;
 static size_t pathLen;
 
-int path_init() {
+VISIBILITY_PUBLIC int path_init() {
 	path = calloc(INITIAL_PATH_LEN + 1, sizeof(*path));
 	INSTANCE_NULL_CHECK_RETURN("path", path, 1);
 	path[INITIAL_PATH_LEN] = '\0';
@@ -31,7 +32,7 @@ int path_init() {
 	return 0;
 }
 
-void path_clear() {
+VISIBILITY_PUBLIC void path_clear() {
 	if (pathLen < 1) {
 		return;
 	}
@@ -39,7 +40,7 @@ void path_clear() {
 	pathLen = 0;
 }
 
-int path_add(char** paths, size_t count) {
+VISIBILITY_PUBLIC int path_add(char** paths, size_t count) {
 	for (size_t i = 0; i < count; i++) {
 		char* newPath = paths[i];
 		size_t newPathLen = strlen(newPath);
@@ -56,11 +57,11 @@ int path_add(char** paths, size_t count) {
 	return 0;
 }
 
-void path_free() {
+VISIBILITY_PUBLIC void path_free() {
 	checked_free(path);
 }
 
-static char* join_paths(const char* dir, const char* file) {
+VISIBILITY_PRIVATE char* join_paths(const char* dir, const char* file) {
 	int dirLen = strlen(dir);
 	int pathLen = dirLen + strlen(file) + 2;
 	char* newPath = calloc(pathLen, sizeof(*newPath));
@@ -81,7 +82,7 @@ static char* join_paths(const char* dir, const char* file) {
 
 static char* filename = NULL;
 
-static int directory_filter(const struct dirent* dir) {
+VISIBILITY_PRIVATE int directory_filter(const struct dirent* dir) {
 	if (!dir) {
 		return 0;
 	} else if (dir->d_type != DT_REG) {
@@ -92,7 +93,7 @@ static int directory_filter(const struct dirent* dir) {
 	return 0;
 }
 
-static char* resolve_within_directory(char* searchable, char* dirPath) {
+VISIBILITY_PRIVATE char* resolve_within_directory(char* searchable, char* dirPath) {
 	struct dirent** dirEntries;
 	filename = searchable;
 	int n = scandir(dirPath, &dirEntries, directory_filter, alphasort);
@@ -108,7 +109,7 @@ static char* resolve_within_directory(char* searchable, char* dirPath) {
 	return join_paths(dirPath, searchable);
 }
 
-static bool is_path(char* searchable) {
+VISIBILITY_PRIVATE bool is_path(char* searchable) {
 	if (searchable == NULL) {
 		return false;
 	}
@@ -123,7 +124,7 @@ static bool is_path(char* searchable) {
 	return true;
 }
 
-char* path_resolve(char* executable) {
+VISIBILITY_PUBLIC char* path_resolve(char* executable) {
 	if (is_path(executable)) {
 		return strdup(executable);
 	}

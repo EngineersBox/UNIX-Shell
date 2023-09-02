@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "path.h"
+#include "visibility.h"
 
 // NOTE: This is in alphabetical order to allow for binary search over commands
 BuiltIn built_in_commands[] = {
@@ -17,7 +18,7 @@ BuiltIn built_in_commands[] = {
 
 size_t built_in_commands_size = 3;
 
-int builtin_cd(char** args, size_t argCount) {
+VISIBILITY_PUBLIC int builtin_cd(char** args, size_t argCount) {
 	if (argCount == 0 || argCount > 1) {
 		return EINVAL;
 	}
@@ -27,14 +28,14 @@ int builtin_cd(char** args, size_t argCount) {
 	return 0;
 }
 
-int builtin_exit(char** args, size_t argCount) {
+VISIBILITY_PUBLIC int builtin_exit(char** args, size_t argCount) {
 	if (argCount > 0) {
 		return EINVAL;
 	}
 	exit(0);
 }
 
-int builtin_path(char** args, size_t argCount) {
+VISIBILITY_PUBLIC int builtin_path(char** args, size_t argCount) {
 	if (argCount == 0) {
 		path_clear();
 		return 0;
@@ -46,7 +47,7 @@ int builtin_path(char** args, size_t argCount) {
 	return 0;
 }
 
-static BuiltIn* builtin_binary_search(char* command) {
+VISIBILITY_PRIVATE BuiltIn* builtin_binary_search(char* command) {
 	int lower = 0;
 	int mid;
 	int upper = built_in_commands_size - 1;
@@ -66,7 +67,7 @@ static BuiltIn* builtin_binary_search(char* command) {
 	return NULL;
 }
 
-int builtin_execv(char* command, char** args, size_t argCount) {
+VISIBILITY_PUBLIC int builtin_execv(char* command, char** args, size_t argCount) {
 	BuiltIn* cmd = builtin_binary_search(command);
 	if (cmd != NULL) {
 		return cmd->command(args, argCount);

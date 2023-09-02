@@ -14,6 +14,7 @@
 #include "builtin.h"
 #include "math_utils.h"
 #include "self_pipe.h"
+#include "visibility.h"
 
 #define READ_PORT 0
 #define WRITE_PORT 1
@@ -23,18 +24,18 @@ typedef struct IO {
 	int out;
 } IO;
 
-static IO io_new() {
+VISIBILITY_PRIVATE IO io_new() {
 	return (IO) { 0 };
 }
 
-static IO stdio_save() {
+VISIBILITY_PRIVATE IO stdio_save() {
 	return (IO) {
 		dup(STDIN_FILENO),
 		dup(STDOUT_FILENO)
 	};
 }
 
-inline static int io_restore(IO* stdio) {
+VISIBILITY_PRIVATE int io_restore(IO* stdio) {
 	errno_return(dup2(stdio->in, STDIN_FILENO), -1, "Unable to duplicate STDIN");
 	errno_return(dup2(stdio->out, STDOUT_FILENO), -1, "Unable to duplicate STDOUT");
 	errno_return(close(stdio->in), -1, "Unable to close STDIN");
@@ -42,13 +43,13 @@ inline static int io_restore(IO* stdio) {
 	return 0;
 }
 
-inline static int redirect(int fd, int std) {
+VISIBILITY_PRIVATE int redirect(int fd, int std) {
 	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std);
 	errno_return(close(fd), -1, "Unable to close %d", fd);
 	return 0;
 }
 
-static int exec_child(Command* command, int selfPipe[2]) {
+VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 	if (close(selfPipe[READ_PORT])) {
 		ERROR(errno, "Unabe to close self pipe read port from child");
 		exit(errno);
@@ -65,7 +66,7 @@ static int exec_child(Command* command, int selfPipe[2]) {
 	exit(0);
 }
 
-static int configure_input(char* infile, IO* stdio, IO* fileio) {
+VISIBILITY_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
 	if (infile != NULL) {
 		if ((fileio->in = open(infile, O_RDONLY)) == -1) {
 			return errno;
@@ -76,7 +77,7 @@ static int configure_input(char* infile, IO* stdio, IO* fileio) {
 	return 0;
 }
 
-static int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
+VISIBILITY_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
 	if (!isLast) {
 		// Not last command (piped)
 		// Create a pipe
@@ -94,7 +95,7 @@ static int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
 	return 0;
 }
 
-static int invoke_builtin_checked(Command* command) {
+VISIBILITY_PRIVATE int invoke_builtin_checked(Command* command) {
 	size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
 	return builtin_execv(
 		command->command,
@@ -103,7 +104,7 @@ static int invoke_builtin_checked(Command* command) {
 	);
 }
 
-static int execute_command_line(CommandLine* line) {
+VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
@@ -166,7 +167,7 @@ static int execute_command_line(CommandLine* line) {
 	return err;
 }
 
-int execute(CommandTable* table) {
+VISIBILITY_PUBLIC int execute(CommandTable* table) {
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, 0);
 	int ret;
 	for (int i = 0; i < table->lineCount; i++) {

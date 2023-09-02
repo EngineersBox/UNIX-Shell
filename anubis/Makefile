@@ -6,15 +6,14 @@ CC=gcc
 CFLAGS=-Wall
 # Debug
 #CFLAGS=-O0 -Wall -lm -g -fno-omit-frame-pointer
-LIBS=
 
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
 anubis: $(OBJS) 
-	$(CC) $(CFLAGS) -o $@ $^ ${LIBS}
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	$(RM) anubis $(OBJS) 
+	$(RM) anubis $(OBJS)
 
 .PHONY: clean

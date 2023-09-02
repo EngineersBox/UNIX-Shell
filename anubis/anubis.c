@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 #include "error.h"
 #include "lexer.h"
@@ -27,6 +28,7 @@ static void exit_handler(void) {
 	lexer_free(lexer);
 	path_free();
 	checked_free(line);
+	while (wait(NULL) >= 0);
 }
 
 int shell_core(char* _line) {
