@@ -110,7 +110,6 @@ static int execute_command_line(CommandLine* line) {
 	char* outfile = checked_invocation(strdup, line->ioModifiers->out);
 	// Save stdin/stdout
 	IO stdio = stdio_save();
-	//fprintf(stderr, "SAVED: %d, %d\n", stdio.in, stdio.out);
 	IO fileio = io_new();
 	// Setup input
 	int ret;
@@ -161,7 +160,7 @@ static int execute_command_line(CommandLine* line) {
 	// Restore in/out defaults
 	transparent_return(io_restore(&stdio));
 	if (!line->bgOp) {
-		// Wait for commands
+		// Wait for commands if last command in foreground
 		while (wait(NULL) >= 0);
 	}
 	return err;

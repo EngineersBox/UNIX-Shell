@@ -3,9 +3,9 @@
 
 CC=gcc
 # Release
-#CFLAGS=-Wall
+CFLAGS=-Wall
 # Debug
-CFLAGS=-O0 -Wall -lm -g -fno-omit-frame-pointer
+#CFLAGS=-O0 -Wall -lm -g -fno-omit-frame-pointer
 LIBS=
 
 SRCS=$(wildcard *.c)
