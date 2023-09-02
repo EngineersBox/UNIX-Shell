@@ -61,6 +61,7 @@ CommandTable* command_table_new() {
 
 void command_table_free(CommandTable* table) {
 	if (table == NULL) {
+		// Invoked in shutdown hook, ignore null entries as they are already free
 		return;
 	}
 	checked_array_free(table->lines, table->lineCount, command_line_free);

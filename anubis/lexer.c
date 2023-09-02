@@ -30,6 +30,7 @@ VISIBILITY_PUBLIC Lexer* lexer_new(char* source) {
 
 VISIBILITY_PUBLIC void lexer_free(Lexer* lexer) {
 	if (lexer == NULL) {
+		// Invoked in shutdown hook, ignore null entries as they are already free
 		return;
 	}
 	checked_free(lexer->string);
