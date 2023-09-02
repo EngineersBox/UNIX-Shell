@@ -97,23 +97,17 @@ static int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
 	return 0;
 }
 
+static int invoke_builtin_checked(Command* command) {
+	size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
+	return builtin_execv(
+		command->command,
+		argCount == 0 ? NULL : &command->args[1],
+		argCount
+	);
+}
+
 static int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
-	if (line->pipeCount == 1) {
-		// TODO: These builtins should not be treated any differently from regular executables.
-		//       Refactor these to be invoked as child procs which can access stdin/stdout within
-		//       a chain of pipes.
-		Command* command = line->pipes[0];
-		size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
-		int ret = builtin_execv(
-			command->command,
-			argCount == 0 ? NULL : &command->args[1],
-			argCount
-		);
-		if (ret != -1) {
-			return ret;
-		}
-	}
 
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
@@ -146,14 +140,25 @@ static int execute_command_line(CommandLine* line) {
 		// Redirect output
 		transparent_return(redirect(fileio.out, STDOUT_FILENO));
 
+		// Invoke builtins conditonally (allows for piped usage)
+		Command* command = line->pipes[i];
+		ret = invoke_builtin_checked(command);
+		if (ret == 0) {
+			continue;
+		} else if (ret != -1) {
+			err = ret;
+			ERROR(err, "%s", command->command);
+			break;
+		}
+
 		int selfPipe[2];
 		ret_return(self_pipe_new(selfPipe), != 0, "Unable to create selfPipe");
 		if (fork() == 0) {
 			// Create child process
-			exec_child(line->pipes[i], selfPipe);
+			exec_child(command, selfPipe);
 		}
 		if (self_pipe_poll(selfPipe, &err)) {
-			ERROR(err, "%s", line->pipes[i]->command);
+			ERROR(err, "%s", command->command);
 			close(selfPipe[READ_PORT]);
 			break;
 		}

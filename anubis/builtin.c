@@ -19,11 +19,9 @@ size_t built_in_commands_size = 3;
 
 int builtin_cd(char** args, size_t argCount) {
 	if (argCount == 0 || argCount > 1) {
-		ERROR(EINVAL, "command 'cd' expects 1 command, got %d", argCount);
 		return EINVAL;
 	}
-	if (chdir(args[0]) != 0) {
-		ERROR(errno, "cd:");
+	if (chdir(args[0])) {
 		return errno;
 	}
 	return 0;
@@ -31,10 +29,8 @@ int builtin_cd(char** args, size_t argCount) {
 
 int builtin_exit(char** args, size_t argCount) {
 	if (argCount > 0) {
-		ERROR(EINVAL, "command 'exit' expects no arguments, got %d", argCount);
 		return EINVAL;
 	}
-	// TODO: Invoke a shutdown hook to clean up resources from main method
 	exit(0);
 }
 
@@ -45,7 +41,6 @@ int builtin_path(char** args, size_t argCount) {
 	}
 	int ret = path_add(args, argCount);
 	if (ret != 0) {
-		ERROR(errno, "path:");
 		return errno;
 	}
 	return 0;
