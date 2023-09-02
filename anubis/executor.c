@@ -24,10 +24,12 @@ typedef struct IO {
 	int out;
 } IO;
 
+__attribute__((hot))
 VISIBILITY_PRIVATE IO io_new() {
 	return (IO) { 0 };
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE IO stdio_save() {
 	return (IO) {
 		dup(STDIN_FILENO),
@@ -35,6 +37,7 @@ VISIBILITY_PRIVATE IO stdio_save() {
 	};
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE int io_restore(IO* stdio) {
 	errno_return(dup2(stdio->in, STDIN_FILENO), -1, "Unable to duplicate STDIN");
 	errno_return(dup2(stdio->out, STDOUT_FILENO), -1, "Unable to duplicate STDOUT");
@@ -43,12 +46,14 @@ VISIBILITY_PRIVATE int io_restore(IO* stdio) {
 	return 0;
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE int redirect(int fd, int std) {
 	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std);
 	errno_return(close(fd), -1, "Unable to close %d", fd);
 	return 0;
 }
 
+__attribute__((hot, noreturn))
 VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 	if (close(selfPipe[READ_PORT])) {
 		ERROR(errno, "Unabe to close self pipe read port from child");
@@ -66,6 +71,7 @@ VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 	exit(0);
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
 	if (infile != NULL) {
 		if ((fileio->in = open(infile, O_RDONLY)) == -1) {
@@ -77,6 +83,7 @@ VISIBILITY_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
 	return 0;
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
 	if (!isLast) {
 		// Not last command (piped)
@@ -95,6 +102,7 @@ VISIBILITY_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char
 	return 0;
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE int invoke_builtin_checked(Command* command) {
 	size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
 	return builtin_execv(
@@ -104,6 +112,7 @@ VISIBILITY_PRIVATE int invoke_builtin_checked(Command* command) {
 	);
 }
 
+__attribute__((hot))
 VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
 	// Command structure
@@ -167,6 +176,7 @@ VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 	return err;
 }
 
+__attribute__((hot))
 VISIBILITY_PUBLIC int execute(CommandTable* table) {
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, 0);
 	int ret;
