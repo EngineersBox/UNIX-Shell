@@ -71,6 +71,10 @@ int shell_stream(int mode, char* filename) {
 			shell_core(line);
 		}
 	}
+	if (mode == BATCH && fclose(stream)) {
+		ERROR(errno, "Unable to close stream");
+		return 1;
+	}
 	return 0;
 }
 
