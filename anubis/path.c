@@ -32,6 +32,9 @@ int path_init() {
 }
 
 void path_clear() {
+	if (pathLen < 1) {
+		return;
+	}
 	memset(path, '\0', INITIAL_PATH_LEN);
 	pathLen = 0;
 }
@@ -50,6 +53,7 @@ int path_add(char** paths, size_t count) {
 		path[pathLen + newPathLen + offset] = '\0';
 		pathLen += newPathLen + offset;
 	}
+	fprintf(stderr, "NEW PATH: %s\n", path);
 	return 0;
 }
 

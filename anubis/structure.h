@@ -24,6 +24,9 @@ typedef enum IoModifierType {
 typedef struct IoModifier {
 	IoModifierType type;
 	char* target;
+	char* outTrunc;
+	char* outAppend;
+	char* in;
 } IoModifier;
 
 IoModifier* io_modifier_new(IoModifierType type, char* target);

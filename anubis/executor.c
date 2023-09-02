@@ -142,20 +142,19 @@ static int execute_command_line(CommandLine* line) {
 			exec_child(line->pipes[i], selfPipe);
 		}
 		if (self_pipe_poll(selfPipe, &err)) {
-			ERROR(err, "%s: %s\n", line->pipes[i]->command, strerror(err));
 			close(selfPipe[READ_PORT]);
 			return err;
 		}
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
 	}
 
-	// Restore in/out defaults
-	transparent_return(io_restore(&stdio));
-
 	if (!line->bgOp) {
 		// Wait for commands
 		while (wait(NULL) >= 0);
 	}
+
+	// Restore in/out defaults
+	transparent_return(io_restore(&stdio));
 
 	return 0;
 }
@@ -164,9 +163,9 @@ int execute(CommandTable* table) {
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, 0);
 	int ret;
 	for (int i = 0; i < table->lineCount; i++) {
-		if ((ret = execute_command_line(table->lines[i])) != 0) {
+		if ((ret = execute_command_line(table->lines[i]))) {
 			return ret;
 		}
 	}
-	return 1;
+	return 0;
 }
