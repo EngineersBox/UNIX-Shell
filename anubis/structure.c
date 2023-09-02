@@ -60,7 +60,9 @@ CommandTable* command_table_new() {
 }
 
 void command_table_free(CommandTable* table) {
-	INSTANCE_NULL_CHECK("CommandTable", table);
+	if (table == NULL) {
+		return;
+	}
 	checked_array_free(table->lines, table->lineCount, command_line_free);
 	checked_free(table->lines);
 	checked_free(table);

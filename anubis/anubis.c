@@ -34,21 +34,18 @@ int shell_core(char* _line) {
 		parser = parser_default();
 		initialised = true;
 	}
+	lexer_free(lexer);
 	lexer = lexer_new(_line);
+	command_table_free(table);
 	table = parse(&parser, lexer);
 	if (table == NULL) {
-		lexer_free(lexer);
 		return 1;
 	}
 	int ret;
 	//command_table_dump(table);
 	if ((ret = execute(table))) {
-		command_table_free(table);
-		lexer_free(lexer);
 		return ret;
 	}
-	command_table_free(table);
-	lexer_free(lexer);
 	return 0;
 }
 
@@ -74,7 +71,6 @@ int shell_stream(int mode, char* filename) {
 			shell_core(line);
 		}
 	}
-	checked_free(line);
 	return 0;
 }
 

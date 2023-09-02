@@ -28,7 +28,9 @@ Lexer* lexer_new(char* source) {
 }
 
 void lexer_free(Lexer* lexer) {
-	_LEXER_NULL_CHECK(lexer);
+	if (lexer == NULL) {
+		return;
+	}
 	checked_free(lexer->string);
 	checked_free(lexer->source);
 	checked_free(lexer);
