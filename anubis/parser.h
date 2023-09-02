@@ -19,28 +19,27 @@ typedef struct Parser {
 
 Parser parser_default();
 
-/**
+/* PARSER TYPE: LR(1) [Left to right, Rightmost derivation, Single token lookahead]
  * PARSER GRAMMAR:
  * =================================================
  * GOAL: CommandList;
  *
- * ArgList: <STRING>*;
+ * Args: <STRING>*;
  *
- * CommandAndArgs: <STRING> ArgList;
+ * Command: <STRING> Args;
  *
  * PipeList:
- *		| <PIPE> CommandAndArgs PipeList
- *		| CommandAndArgs;
+ *		| <PIPE> Command PipeList
+ *		| Command;
  *
- * IoModifier: <GREATER> <STRING>;
+ * IoModifier:
+ *		<GREATER> <STRING>;
  *
- * IoModifierList:
- *		| IoModifier IoModifierList
- *		| IoModifier;
+ * IoModifiers: IoModifier?;
  *
  * BackgroundOp: <AMPERSAND>?;
  *
- * CommandLine: PipeList IoModifierList BackgroundOp;
+ * CommandLine: PipeList IoModifiers BackgroundOp;
  *
  * CommandList: CommandLine+;
  * =================================================

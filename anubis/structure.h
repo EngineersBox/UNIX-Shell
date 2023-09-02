@@ -19,7 +19,7 @@ typedef Command** PipeList;
 
 
 typedef struct IoModifiers {
-	char* in; // NOTE: Add support for other IO operators here (e.g. >>, <, etc)
+	char* out; // NOTE: Add support for other IO operators here (e.g. >>, <, etc)
 } IoModifiers;
 
 IoModifiers* io_modifiers_new(char* in);

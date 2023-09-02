@@ -1,28 +1,29 @@
-/* PARSER GRAMMAR:
+/* PARSER TYPE: LR(1) [Left to right, Rightmost derivation, Single token lookahead]
+ * PARSER GRAMMAR:
  * =================================================
  * GOAL: CommandList;
  *
- * ArgList: <STRING>*;
+ * Args: <STRING>*;
  *
- * CommandAndArgs: <STRING> ArgList;
+ * Command: <STRING> Args;
  *
  * PipeList:
- *		| <PIPE> CommandAndArgs PipeList
- *		| CommandAndArgs;
+ *		| <PIPE> Command PipeList
+ *		| Command;
  *
- * IoModifier: <GREATER> <STRING>;
+ * IoModifier:
+ *		<GREATER> <STRING>;
  *
- * IoModifierList:
- *		| IoModifier IoModifierList
- *		| IoModifier;
+ * IoModifiers: IoModifier?;
  *
  * BackgroundOp: <AMPERSAND>?;
  *
- * CommandLine: PipeList IoModifierList BackgroundOp;
+ * CommandLine: PipeList IoModifiers BackgroundOp;
  *
  * CommandList: CommandLine+;
  * =================================================
  */
+
 #include "parser.h"
 
 #include <stdlib.h>
@@ -48,7 +49,7 @@ Parser parser_default() {
 #define HANDLED_REALLOC(target, bump)\
 	size += (bump);\
 	if (((target) = realloc((target), size * sizeof(*target))) == NULL) {\
-		ERROR(ENOMEM, "Unable t resize" #target " to size %d", size);\
+		ERROR(ENOMEM, "Unable to resize " #target " to size %d", size);\
 		return NULL;\
 	}
 
@@ -61,10 +62,7 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 	}
 	size_t size = _this->arg_list_base_size;
 	Args args = calloc(size, sizeof(*args));
-	if (args == NULL) {
-		ERROR(ENOMEM, "Unable to allocate ArgList of size %d", size);
-		return NULL;
-	}
+	verrno_return(args, NULL, "Unable to allocate Args of size %d", size);
 	Token symbol;
 	size_t index = 1;
 	 while (lexer_next_symbol(lexer)) {	
@@ -74,10 +72,10 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 		} else if (index >= size - 1) {
 			HANDLED_REALLOC(args, _this->arg_list_base_size);
 		}
-		if ((args[index++] = strdup(lexer_current_string(lexer))) == NULL) {
-			ERROR(ENOMEM, "Unable to duplicate argument string");
-			return NULL;
-		}
+		verrno_return(
+			args[index++] = strdup(lexer_current_string(lexer)),
+			NULL, "Unable to duplicate argument string"
+		);
 	}
 	if (index >= size - 1) {
 		HANDLED_REALLOC(args, _this->arg_list_base_size);
@@ -117,10 +115,7 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	size_t size = _this->pipes_list_base_size;
 	PipeList pipes = calloc(size, sizeof(*pipes));
-	if (pipes == NULL) {
-		ERROR(ENOMEM, "Unable to allocate PipeList of size %d", size);
-		return NULL;
-	}
+	verrno_return(pipes, NULL, "Unable to allocate PipeList of size %d", size);
 	size_t index = 0;
 	do {
 		Command* commandAndArgs;
@@ -147,7 +142,7 @@ VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) 
 	}
 	Token symbol;
 	size_t index = 0;
-	do {
+	do { // NOTE: Loop is not neccessary for this implementation, but makes it easier for implementing other IO modifiers in future
 		symbol = lexer_current_symbol(lexer);
 		if (index > 0 && (symbol != EOI && symbol == STRING)) {
 			ERROR(EINVAL, "Unexpected string when parsing IoModifiers");
@@ -163,10 +158,10 @@ VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) 
 		}
 		switch (symbol) {
 			case GREATER:
-				if (ioModifiers->in != NULL) {
+				if (ioModifiers->out != NULL) {
 					ERROR(EINVAL, "Multiple output redirection is not supported");
 					return NULL;
-				} else if ((ioModifiers->in = strdup(lexer_current_string(lexer))) == NULL) {
+				} else if ((ioModifiers->out = strdup(lexer_current_string(lexer))) == NULL) {
 					ERROR(ENOMEM, "Unable to duplicate modifier target string");
 					return NULL;
 				}
@@ -208,10 +203,7 @@ VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 	if (table == NULL) return NULL;
 	size_t size = _this->command_list_base_size;
 	table->lines = calloc(size, sizeof(*(table->lines)));
-	if (table == NULL) {
-		ERROR(ENOMEM, "Unable to allocate command list of size %d", size);
-		return NULL;
-	}
+	verrno_return(table, NULL, "Unable to allocate command list of size %d", size);
 	size_t index = 0;
 	Token symbol;
 	while (lexer_next_symbol(lexer) && (symbol = lexer_current_symbol(lexer)) != EOI) {

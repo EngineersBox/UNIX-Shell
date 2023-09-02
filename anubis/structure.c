@@ -20,16 +20,16 @@ void command_free(Command* command) {
 	checked_free(command);
 }
 
-IoModifiers* io_modifiers_new(char* in) {
+IoModifiers* io_modifiers_new(char* out) {
 	IoModifiers* modifiers = malloc(sizeof(*modifiers));
 	INSTANCE_NULL_CHECK_RETURN("IoModifiers", modifiers, NULL);
-	modifiers->in = in;
+	modifiers->out = out;
 	return modifiers;
 }
 
 void io_modifiers_free(IoModifiers* modifiers) {
 	INSTANCE_NULL_CHECK("IoModifiers", modifiers);
-	checked_free(modifiers->in);
+	checked_free(modifiers->out);
 	checked_free(modifiers);
 }
 
@@ -81,8 +81,8 @@ void command_table_dump(CommandTable* table) {
 			fprintf(stderr, "]\n");
 		}
 		if (line->ioModifiers != NULL) {
-			if (line->ioModifiers->in != NULL) {
-				fprintf(stderr, "   [>] %s\n", line->ioModifiers->in);
+			if (line->ioModifiers->out != NULL) {
+				fprintf(stderr, "   [>] %s\n", line->ioModifiers->out);
 			}
 		}
 		fprintf(stderr, "   [&] %s\n", line->bgOp ? "true" : "false");

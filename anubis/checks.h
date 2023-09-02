@@ -18,17 +18,25 @@
 		return ret;\
 	}
 
-#define ret_return(expr, code, msg, ...)\
+#define ret_return(expr, code, ...)\
 	ret = (expr);\
 	if (ret code) {\
-		ERROR(ret, "" msg ": %s", __VA_ARGS__ strerror(ret));\
+		ERROR(ret, __VA_ARGS__);\
 		return ret;\
 	}
 
-#define errno_return(expr, code, msg, ...)\
+#define verrno_return(expr, rv, ...)\
+	if ((expr) == (rv)) {\
+		ERROR(errno, __VA_ARGS__);\
+		return rv;\
+	}
+
+#define errno_return(expr, code, ...)\
 	if ((expr) == (code)) {\
-		ERROR(errno, "" msg ": %s", __VA_ARGS__ strerror(errno));\
+		ERROR(errno, __VA_ARGS__);\
 		return errno;\
 	}
+
+#define checked_invocation(func, value) ((value) == NULL ? NULL : (func)((value)))
 
 #endif // ANUBIS_CHECKS_H

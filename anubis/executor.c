@@ -35,24 +35,16 @@ static IO stdio_save() {
 }
 
 inline static int io_restore(IO* stdio) {
-	//fprintf(stderr, "RESTORE: %d -> %d\n", stdio->in, STDIN_FILENO);
 	errno_return(dup2(stdio->in, STDIN_FILENO), -1, "Unable to duplicate STDIN");
-	//fprintf(stderr, "CLOSED: %d\n", STDIN_FILENO);
-	//fprintf(stderr, "RESTORE: %d -> %d\n", stdio->out, STDOUT_FILENO);
 	errno_return(dup2(stdio->out, STDOUT_FILENO), -1, "Unable to duplicate STDOUT");
-	//fprintf(stderr, "CLOSED: %d\n", STDOUT_FILENO);
 	errno_return(close(stdio->in), -1, "Unable to close STDIN");
-	//fprintf(stderr, "CLOSED: %d\n", stdio->in);
 	errno_return(close(stdio->out), -1, "Unable to close STDOUT");
-	//fprintf(stderr, "CLOSED: %d\n", stdio->out);
 	return 0;
 }
 
 inline static int redirect(int fd, int std) {
-	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std,);
-	//fprintf(stderr, "REDIRECT: %d -> %d\n", fd, std);
-	errno_return(close(fd), -1, "Unable to close %d", fd,);
-	//fprintf(stderr, "CLOSED: %d\n", fd);
+	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std);
+	errno_return(close(fd), -1, "Unable to close %d", fd);
 	return 0;
 }
 
@@ -111,10 +103,7 @@ static int execute_command_line(CommandLine* line) {
 
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
-	char* outfile = NULL;
-	if (line->ioModifiers->in != NULL) {
-		outfile = strdup(line->ioModifiers->in);
-	}
+	char* outfile = checked_invocation(strdup, line->ioModifiers->out);
 
 	// Save stdin/stdout
 	IO stdio = stdio_save();
@@ -142,11 +131,10 @@ static int execute_command_line(CommandLine* line) {
 
 		// Invoke builtins conditonally (allows for piped usage)
 		Command* command = line->pipes[i];
-		ret = invoke_builtin_checked(command);
-		if (ret == 0) {
+		err = invoke_builtin_checked(command);
+		if (err == 0) {
 			continue;
-		} else if (ret != -1) {
-			err = ret;
+		} else if (err != -1) {
 			ERROR(err, "%s", command->command);
 			break;
 		}
@@ -163,6 +151,7 @@ static int execute_command_line(CommandLine* line) {
 			break;
 		}
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
+		err = 0;
 	}
 
 	// Restore in/out defaults
