@@ -118,7 +118,6 @@ int shell_stream(int mode, char* filename) {
 	char* line;
 	size_t len = 0;
 	ssize_t count = 0;
-	int err;
 	while ((count = next_line(&line, &len, stream)) > 0) {
 		shell_core(line);
 	}
@@ -126,16 +125,8 @@ int shell_stream(int mode, char* filename) {
 }
 
 int main(int argc, char** argv) {
-	// 1. Check if args exist for batch exec
-	// 2. If they do then pipe batch file lines as input
-	// 3. Otherwise poll stdin for lines as input
-	// 4. Tokenise line
-	// 5. Parse line
-	// 6. Construct execution structures
-	// 7. Execute commands and resolve paths on-demand
-	//executor_test_main(0, NULL);
 	if (argc > 2) {
-		ERROR(EINVAL, "usage: anubis [script...]");
+		ERROR(EINVAL, "usage: anubis [script]");
 		return 1;
 	}
 	path_init();
