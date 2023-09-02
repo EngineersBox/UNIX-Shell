@@ -151,6 +151,8 @@ static int execute_command_line(CommandLine* line) {
 		if (self_pipe_poll(selfPipe, &err)) {
 			ERROR(err, "%s", line->pipes[i]->command);
 			close(selfPipe[READ_PORT]);
+			// Restore in/out defaults
+			transparent_return(io_restore(&stdio));
 			return err;
 		}
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
