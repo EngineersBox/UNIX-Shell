@@ -14,7 +14,6 @@
 typedef struct Parser {
 	size_t arg_list_base_size;
 	size_t pipes_list_base_size;
-	size_t io_modifier_list_base_size;
 	size_t command_list_base_size;
 } Parser;
 

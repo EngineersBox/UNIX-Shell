@@ -103,11 +103,17 @@ void next_char(Lexer* _this) {
 		} \
 	}
 
-#define SINGLE_TOKEN_CASE(literal, token) \
+#define SINGLE_TOKEN_CASE(literal, token, skipSequential) \
 	case literal:\
 		HANDLE_NEXT_STRING;\
 		next_char(_this);\
 		_this->symbol = (token);\
+		while (skipSequential && _this->cchar == literal) {\
+			next_char(_this);\
+		}\
+		if (skipSequential) {\
+			goto read;\
+		}\
 		break
 
 void remove_char(Lexer* _this) {
@@ -120,6 +126,7 @@ void remove_char(Lexer* _this) {
 int lexer_next_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos >= _this->source_len - 1) {
+		_this->symbol = EOI;
 		return 0;
 	}
 	int res;
@@ -130,6 +137,7 @@ read:
 	switch (_this->cchar) {
 		case '\0':
 			HANDLE_NEXT_STRING;
+			_this->symbol = EOI;
 			break;
 		case ' ':
 		case '\t':
@@ -145,10 +153,10 @@ read:
 			HANDLE_NEXT_STRING
 			next_char(_this);
 			goto read;
-		SINGLE_TOKEN_CASE(EOF, EOI);
-		SINGLE_TOKEN_CASE(_TOK_AMPERSAND, AMPERSAND);
-		SINGLE_TOKEN_CASE(_TOK_PIPE, PIPE);
-		SINGLE_TOKEN_CASE(_TOK_GREATER, GREATER);
+		SINGLE_TOKEN_CASE(EOF, EOI, false);
+		SINGLE_TOKEN_CASE(_TOK_AMPERSAND, AMPERSAND, true);
+		SINGLE_TOKEN_CASE(_TOK_PIPE, PIPE, false);
+		SINGLE_TOKEN_CASE(_TOK_GREATER, GREATER, false);
 		case '\\':
 			escape = true;
 			goto string;

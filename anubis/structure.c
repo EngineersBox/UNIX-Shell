@@ -20,27 +20,25 @@ void command_free(Command* command) {
 	checked_free(command);
 }
 
-IoModifier* io_modifier_new(IoModifierType type, char* target) {
-	IoModifier* modifier = malloc(sizeof(*modifier));
-	INSTANCE_NULL_CHECK_RETURN("IoModifier", modifier, NULL);
-	modifier->type = type;
-	modifier->target = target;
-	return modifier;
+IoModifiers* io_modifiers_new(char* in) {
+	IoModifiers* modifiers = malloc(sizeof(*modifiers));
+	INSTANCE_NULL_CHECK_RETURN("IoModifiers", modifiers, NULL);
+	modifiers->in = in;
+	return modifiers;
 }
 
-void io_modifier_free(IoModifier* modifier) {
-	INSTANCE_NULL_CHECK("IoModifier", modifier);
-	checked_free(modifier->target);
-	checked_free(modifier);
+void io_modifiers_free(IoModifiers* modifiers) {
+	INSTANCE_NULL_CHECK("IoModifiers", modifiers);
+	checked_free(modifiers->in);
+	checked_free(modifiers);
 }
 
-CommandLine* command_line_new(PipeList pipes, size_t pipeCount, IoModifierList ioModifiers, size_t modifiersCount, BackgroundOp bgOp) {
+CommandLine* command_line_new(PipeList pipes, size_t pipeCount, IoModifiers* ioModifiers, BackgroundOp bgOp) {
 	CommandLine* cmdLine = malloc(sizeof(*cmdLine));
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", cmdLine, NULL);
 	cmdLine->pipes = pipes;
 	cmdLine->pipeCount = pipeCount;
 	cmdLine->ioModifiers = ioModifiers;
-	cmdLine->modifiersCount = modifiersCount;
 	cmdLine->bgOp = bgOp;
 	return cmdLine;
 }
@@ -49,8 +47,7 @@ void command_line_free(CommandLine* line) {
 	INSTANCE_NULL_CHECK("CommandLine", line);
 	checked_array_free(line->pipes, line->pipeCount, command_free);
 	checked_free(line->pipes);
-	checked_array_free(line->ioModifiers, line->modifiersCount, io_modifier_free);
-	checked_free(line->ioModifiers);
+	io_modifiers_free(line->ioModifiers);
 	checked_free(line);
 }
 
@@ -81,10 +78,10 @@ void command_table_dump(CommandTable* table) {
 			}
 			fprintf(stderr, "]\n");
 		}
-		for (int j = 0; j < line->modifiersCount; j++) {
-			IoModifier* ioModifier = line->ioModifiers[j];
-			fprintf(stderr, "   [>] %s\n", ioModifier->target);
-
+		if (line->ioModifiers != NULL) {
+			if (line->ioModifiers->in != NULL) {
+				fprintf(stderr, "   [>] %s\n", line->ioModifiers->in);
+			}
 		}
 		fprintf(stderr, "   [&] %s\n", line->bgOp ? "true" : "false");
 	}

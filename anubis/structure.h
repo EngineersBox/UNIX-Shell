@@ -17,34 +17,24 @@ void command_free(Command* command);
 
 typedef Command** PipeList;
 
-typedef enum IoModifierType {
-	GREAT // Maps to Token::GREAT
-} IoModifierType;
 
-typedef struct IoModifier {
-	IoModifierType type;
-	char* target;
-	char* outTrunc;
-	char* outAppend;
-	char* in;
-} IoModifier;
+typedef struct IoModifiers {
+	char* in; // NOTE: Add support for other IO operators here (e.g. >>, <, etc)
+} IoModifiers;
 
-IoModifier* io_modifier_new(IoModifierType type, char* target);
-void io_modifier_free(IoModifier* modifier);
-
-typedef IoModifier** IoModifierList;
+IoModifiers* io_modifiers_new(char* in);
+void io_modifiers_free(IoModifiers* modifiers);
 
 typedef bool BackgroundOp;
 
 typedef struct __attribute__((__packed__)) CommandLine {
 	size_t pipeCount;
-	size_t modifiersCount;
 	PipeList pipes;
-	IoModifierList ioModifiers;
+	IoModifiers* ioModifiers;
 	BackgroundOp bgOp;
 } CommandLine;
 
-CommandLine* command_line_new(PipeList pipes, size_t pipeCount, IoModifierList ioModifiers, size_t modifiersCount, BackgroundOp bgOp);
+CommandLine* command_line_new(PipeList pipes, size_t pipeCount, IoModifiers* ioModifiers, BackgroundOp bgOp);
 void command_line_free(CommandLine* line);
 
 typedef struct CommandTable {

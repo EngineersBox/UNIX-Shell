@@ -20,6 +20,8 @@ typedef enum Token {
 	EOI
 } Token;
 
+#define is_modifier(token) ((token) == GREATER)
+
 extern const char* token_names[];
 
 typedef struct __attribute__((__packed__)) Lexer {

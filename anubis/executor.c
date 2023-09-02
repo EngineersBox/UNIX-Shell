@@ -118,8 +118,8 @@ static int execute_command_line(CommandLine* line) {
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
 	char* outfile = NULL;
-	if (line->modifiersCount > 0) {
-		outfile = line->ioModifiers[0]->target;
+	if (line->ioModifiers->in != NULL) {
+		outfile = strdup(line->ioModifiers->in);
 	}
 
 	// Save stdin/stdout
@@ -161,13 +161,13 @@ static int execute_command_line(CommandLine* line) {
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
 	}
 
+	// Restore in/out defaults
+	transparent_return(io_restore(&stdio));
+
 	if (!line->bgOp) {
 		// Wait for commands
 		while (wait(NULL) >= 0);
 	}
-
-	// Restore in/out defaults
-	transparent_return(io_restore(&stdio));
 
 	return err;
 }

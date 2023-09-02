@@ -41,7 +41,6 @@ Parser parser_default() {
 	return (Parser) {
 		.arg_list_base_size = DEFAULT_ARG_LIST_SIZE,
 		.pipes_list_base_size = DEFAULT_PIPES_LIST_SIZE,
-		.io_modifier_list_base_size = DEFAULT_IO_MODIFIER_LIST_SIZE,
 		.command_list_base_size = DEFAULT_COMMAND_LIST_SIZE,
 	};
 }
@@ -140,49 +139,42 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 	return pipes;
 }
 
-VISIBILITY_PRIVATE int map_token_to_io_modifier_type(Token token) {
-	switch (token) {
-		case GREATER: return (IoModifierType) GREATER;
-		default: return -1;
-	}
-}
-
-VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* lexer, size_t* count) {
+VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
-	size_t size = _this->io_modifier_list_base_size;
-	IoModifierList ioModifierList = calloc(size, sizeof(*ioModifierList));
-	if (ioModifierList == NULL) {
-		ERROR(ENOMEM, "Unable to allocate IoModifierList of size %d", size);
+	IoModifiers* ioModifiers = io_modifiers_new(NULL);
+	if (ioModifiers == NULL) {
 		return NULL;
 	}
 	Token symbol;
-	size_t index = 0;
+	size_t index;
 	do {
 		symbol = lexer_current_symbol(lexer);
-		int modifier = map_token_to_io_modifier_type(symbol);
-		if (modifier == -1) {
+		if (index > 0 && (symbol != EOI && symbol == STRING)) {
+			ERROR(EINVAL, "Unexpected string when parsing IoModifiers");
+			return NULL;
+		} else if (!is_modifier(symbol)) {
 			break;
-		}
-		IoModifierType type = (IoModifierType) modifier;
-		if (!lexer_next_symbol(lexer)) {
+		} else if (!lexer_next_symbol(lexer)) {
 			ERROR(EINVAL, "Unable to parse IO modifier target");
 			return NULL;
-		}
-		symbol = lexer_current_symbol(lexer);
-		if (symbol != STRING) {
+		} else if (lexer_current_symbol(lexer) != STRING) {
 			ERROR(EINVAL, "Expected target of IO modifier (string), got %s", token_names[symbol]);
 			return NULL;
-		} else if (index >= size - 1) {
-			HANDLED_REALLOC(ioModifierList, _this->io_modifier_list_base_size);
 		}
-		ioModifierList[index++] = io_modifier_new(type, strdup(lexer_current_string(lexer)));
-		if (ioModifierList[index - 1]->target == NULL) {
-			ERROR(ENOMEM, "Unable to duplicate modifier target string");
-			return NULL;
+		switch (symbol) {
+			case GREATER:
+				if (ioModifiers->in != NULL) {
+					ERROR(EINVAL, "Multiple output redirection is not supported");
+					return NULL;
+				} else if ((ioModifiers->in = strdup(lexer_current_string(lexer))) == NULL) {
+					ERROR(ENOMEM, "Unable to duplicate modifier target string");
+					return NULL;
+				}
+			default: break;
 		}
+		index++;
 	} while (lexer_next_symbol(lexer));
-	*count = index;
-	return ioModifierList;
+	return ioModifiers;
 }
 
 VISIBILITY_PRIVATE BackgroundOp parse_background_op(Parser* _this, Lexer* lexer) {
@@ -197,8 +189,7 @@ VISIBILITY_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) 
 	if (pipes == NULL) {
 		return NULL;
 	}
-	size_t modifiersCount = 0;
-	IoModifierList ioModifiers = parse_io_modifier_list(_this, lexer, &modifiersCount);
+	IoModifiers* ioModifiers = parse_io_modifiers(_this, lexer);
 	if (ioModifiers == NULL) {
 		return NULL;
 	}
@@ -207,7 +198,6 @@ VISIBILITY_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) 
 		pipes,
 		pipeCount,
 		ioModifiers,
-		modifiersCount,
 		bgOp
 	);
 }

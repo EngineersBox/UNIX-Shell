@@ -113,16 +113,14 @@ int shell_stream(int mode, char* filename) {
 	FILE* stream = stdin;
 	if (mode == BATCH && (stream = fopen(filename, "r")) == NULL) {
 		ERROR(errno, "Unable to open file to stream");
-		return errno;
+		return 1;
 	}
 	char* line;
 	size_t len = 0;
 	ssize_t count = 0;
 	int err;
 	while ((count = next_line(&line, &len, stream)) > 0) {
-		if ((err = shell_core(line)) && mode == BATCH) {
-			return 0;
-		}
+		shell_core(line);
 	}
 	return 0;
 }
@@ -137,8 +135,8 @@ int main(int argc, char** argv) {
 	// 7. Execute commands and resolve paths on-demand
 	//executor_test_main(0, NULL);
 	if (argc > 2) {
-		ERROR(EINVAL, "usage: anubis [batch file]");
-		return EINVAL;
+		ERROR(EINVAL, "usage: anubis [script...]");
+		return 1;
 	}
 	path_init();
 	int ret = shell_stream(
