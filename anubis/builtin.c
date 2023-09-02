@@ -31,6 +31,7 @@ int builtin_exit(char** args, size_t argCount) {
 		ERROR(EINVAL, "command 'exit' expects no arguments, got %d", argCount);
 		return EINVAL;
 	}
+	// TODO: Invoke a shutdown hook to clean up resources from main method
 	exit(0);
 }
 

@@ -15,7 +15,7 @@ Command* command_new(char* command, Args args, size_t argCount) {
 void command_free(Command* command) {
 	INSTANCE_NULL_CHECK("command", command);
 	checked_free(command->command);
-	checked_array_free(command->args + 1, command->argCount - 1, checked_free);
+	checked_array_free(command->args, command->argCount - 1, checked_free);
 	checked_free(command->args);
 	checked_free(command);
 }

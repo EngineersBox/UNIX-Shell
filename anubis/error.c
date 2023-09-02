@@ -4,6 +4,7 @@ void ERROR(int errnum, const char * format, ... ) {
     if(_DEBUG) {
         va_list args;
         va_start (args, format);
+		fprintf(stderr, "%s%s(%d)", __FILE__, __func__, __LINE__);
         vfprintf(stderr, format, args);
         va_end (args);
         if(errnum > 0) fprintf(stderr, ": %s", strerror(errnum));

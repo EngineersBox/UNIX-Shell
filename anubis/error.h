@@ -12,7 +12,7 @@
 //  _DEBUG=1: print custom messages.
 // Make sure you set _DEBUG to 0 for the submitted version. 
 
-#define _DEBUG 1
+#define _DEBUG 0
 
 void ERROR(int errnum, const char * format, ... );
 

@@ -105,7 +105,7 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 	}
 	size_t argCount;
 	Args args = parse_args(_this, lexer, &argCount);
-	args[0] = command;
+	args[0] = strdup(command);
 	*commandAndArgs = command_new(
 		command,
 		args,

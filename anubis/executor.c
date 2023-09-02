@@ -64,10 +64,19 @@ static int exec_child(Command* command, int selfPipe[2]) {
 		exit(0);
 	}
 	checked_free(command->command);
-	command->command = command->args[0] = resolved;
+	command->command = resolved;
 	execv(command->command, command->args);
 	self_pipe_send(selfPipe, errno);
 	exit(0);
+}
+
+static int configure_input(char* infile, IO* stdio, IO* fileio) {
+	if (infile != NULL && (fileio->in = open(infile, O_RDONLY)) == -1) {
+		return errno;
+	} else if ((fileio->in = dup(stdio->in)) == -1) {
+		return errno;
+	}
+	return 0;
 }
 
 static int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
@@ -118,14 +127,10 @@ static int execute_command_line(CommandLine* line) {
 	//fprintf(stderr, "SAVED: %d, %d\n", stdio.in, stdio.out);
 	IO fileio = io_new();
 
-	// Set initial input
-	if (infile != NULL) {
-		fileio.in = open(infile, O_RDONLY);
-	} else {
-		fileio.in = dup(stdio.in);
-	}
-
+	// Setup input
 	int ret;
+	transparent_return(configure_input(infile, &stdio, &fileio));
+
 	int err = 0;
 	for (int i = 0; i < line->pipeCount; i++) {
 		// Redirect input
@@ -151,9 +156,7 @@ static int execute_command_line(CommandLine* line) {
 		if (self_pipe_poll(selfPipe, &err)) {
 			ERROR(err, "%s", line->pipes[i]->command);
 			close(selfPipe[READ_PORT]);
-			// Restore in/out defaults
-			transparent_return(io_restore(&stdio));
-			return err;
+			break;
 		}
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
 	}
@@ -166,7 +169,7 @@ static int execute_command_line(CommandLine* line) {
 	// Restore in/out defaults
 	transparent_return(io_restore(&stdio));
 
-	return 0;
+	return err;
 }
 
 int execute(CommandTable* table) {

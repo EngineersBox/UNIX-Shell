@@ -102,25 +102,28 @@ int shell_core(char* line) {
 	return 0;
 }
 
-int next_line(char** line, size_t* len) {
-	fprintf(stdout, "anubis> ");
-	return getline(line, len, stdin);
+int next_line(char** line, size_t* len, FILE* stream) {
+	if (stream == stdin) {
+		fprintf(stdout, "anubis> ");
+	}
+	return getline(line, len, stream);
 }
 
-int shell_interactive() {
+int shell_stream(int mode, char* filename) {
+	FILE* stream = stdin;
+	if (mode == BATCH && (stream = fopen(filename, "r")) == NULL) {
+		ERROR(errno, "Unable to open file to stream");
+		return errno;
+	}
 	char* line;
 	size_t len = 0;
-	ssize_t lineSize = 0;
-	while ((lineSize = next_line(&line, &len)) > 0) {
-		// TODO: Make this terminate/return only when a fatal shell error occurs,
-		//       if it is a command error then just continue with prompt again
-		shell_core(line);
+	ssize_t count = 0;
+	int err;
+	while ((count = next_line(&line, &len, stream)) > 0) {
+		if ((err = shell_core(line)) && mode == BATCH) {
+			return 0;
+		}
 	}
-	free(line);
-	return 0;
-}
-
-int shell_batch(char* filename) {
 	return 0;
 }
 
@@ -133,16 +136,15 @@ int main(int argc, char** argv) {
 	// 6. Construct execution structures
 	// 7. Execute commands and resolve paths on-demand
 	//executor_test_main(0, NULL);
-	path_init();
-	int ret = 0;
-	if (argc == INTERACTIVE) {
-		ret = shell_interactive();
-	} else if (argc == BATCH) {
-		ret = shell_batch(argv[BATCH]);
-	} else {
+	if (argc > 2) {
 		ERROR(EINVAL, "usage: anubis [batch file]");
 		return EINVAL;
 	}
+	path_init();
+	int ret = shell_stream(
+		argc,
+		argc == BATCH ? argv[1] : NULL
+	);
 	path_free();
 	return ret;
 }
