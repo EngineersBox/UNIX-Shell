@@ -19,9 +19,11 @@ const char* token_names[] = {
 	[EOI] = "EOI"
 };
 
-Lexer lexer_new(char* source) {
-	Lexer lexer = {};
-	lexer_reset(&lexer, source);
+Lexer* lexer_new(char* source) {
+	Lexer* lexer = malloc(sizeof(*lexer));
+	lexer->source = NULL;
+	lexer->string = NULL;
+	lexer_reset(lexer, source);
 	return lexer;
 }
 
@@ -29,6 +31,7 @@ void lexer_free(Lexer* lexer) {
 	_LEXER_NULL_CHECK(lexer);
 	checked_free(lexer->string);
 	checked_free(lexer->source);
+	checked_free(lexer);
 }
 
 int lexer_reset(Lexer* _this, char* source) {

@@ -146,7 +146,7 @@ VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) 
 		return NULL;
 	}
 	Token symbol;
-	size_t index;
+	size_t index = 0;
 	do {
 		symbol = lexer_current_symbol(lexer);
 		if (index > 0 && (symbol != EOI && symbol == STRING)) {

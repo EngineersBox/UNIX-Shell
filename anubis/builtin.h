@@ -11,6 +11,7 @@ typedef struct BuiltIn {
 } BuiltIn;
 
 extern BuiltIn built_in_commands[];
+extern size_t built_in_commands_size;
 
 int builtin_cd(char** args, size_t argCount);
 int builtin_exit(char** args, size_t argCount);

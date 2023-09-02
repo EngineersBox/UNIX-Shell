@@ -36,7 +36,7 @@ typedef struct __attribute__((__packed__)) Lexer {
 	char* string;
 } Lexer;
 
-Lexer lexer_new(char* source);
+Lexer* lexer_new(char* source);
 void lexer_free(Lexer* lexer);
 
 int lexer_reset(Lexer* _this, char* source);
