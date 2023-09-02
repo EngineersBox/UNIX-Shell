@@ -6,7 +6,7 @@
 
 #define __INSTANCE_NULL_CHECK(_instanceName, _this, _ret) \
 	if (_this == NULL) {\
-		ERROR(EINVAL, "Cannot invoke instance method on null " _instanceName " instance\n");\
+		ERROR(EINVAL, "Cannot invoke instance method on null " _instanceName " instance");\
 		_ret;\
 	}
 #define INSTANCE_NULL_CHECK_RETURN(_instanceName, _this, _returnValue) __INSTANCE_NULL_CHECK(_instanceName, _this, return _returnValue)
@@ -21,13 +21,13 @@
 #define ret_return(expr, code, msg, ...)\
 	ret = (expr);\
 	if (ret code) {\
-		ERROR(ret, "" msg ": %s\n", __VA_ARGS__ strerror(ret));\
+		ERROR(ret, "" msg ": %s", __VA_ARGS__ strerror(ret));\
 		return ret;\
 	}
 
 #define errno_return(expr, code, msg, ...)\
 	if ((expr) == (code)) {\
-		ERROR(errno, "" msg ": %s\n", __VA_ARGS__ strerror(errno));\
+		ERROR(errno, "" msg ": %s", __VA_ARGS__ strerror(errno));\
 		return errno;\
 	}
 

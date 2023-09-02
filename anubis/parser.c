@@ -49,7 +49,7 @@ Parser parser_default() {
 #define HANDLED_REALLOC(target, bump)\
 	size += (bump);\
 	if (((target) = realloc((target), size * sizeof(*target))) == NULL) {\
-		ERROR(ENOMEM, "Unable tp resize" #target " to size %d\n", size);\
+		ERROR(ENOMEM, "Unable t resize" #target " to size %d", size);\
 		return NULL;\
 	}
 
@@ -57,13 +57,13 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);	
 	if (lexer_current_symbol(lexer) != STRING) {
 		*count = 0;
-		ERROR(EINVAL, "Expected a string, got %s\n", token_names[lexer_current_symbol(lexer)]);
+		ERROR(EINVAL, "Expected a string, got %s", token_names[lexer_current_symbol(lexer)]);
 		return NULL;
 	}
 	size_t size = _this->arg_list_base_size;
 	Args args = calloc(size, sizeof(*args));
 	if (args == NULL) {
-		ERROR(ENOMEM, "Unable to allocate ArgList of size %d\n", size);
+		ERROR(ENOMEM, "Unable to allocate ArgList of size %d", size);
 		return NULL;
 	}
 	Token symbol;
@@ -76,7 +76,7 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 			HANDLED_REALLOC(args, _this->arg_list_base_size);
 		}
 		if ((args[index++] = strdup(lexer_current_string(lexer))) == NULL) {
-			ERROR(ENOMEM, "Unable to duplicate argument string\n");
+			ERROR(ENOMEM, "Unable to duplicate argument string");
 			return NULL;
 		}
 	}
@@ -94,13 +94,13 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 	Token prefix = lexer_current_symbol(lexer);
 	char* command;
 	if (prefix != STRING && prefix != PIPE) {
-		ERROR(EINVAL, "Expected a pipe or subcommand, got %s\n", token_names[prefix]);
+		ERROR(EINVAL, "Expected a pipe or subcommand, got %s", token_names[prefix]);
 		return -1;
 	} else if (prefix == PIPE && !lexer_next_symbol(lexer)) {
-		ERROR(EINVAL, "Unable to parse command following pipe\n");
+		ERROR(EINVAL, "Unable to parse command following pipe");
 		return -1;
 	} else if ((command = strdup(lexer_current_string(lexer))) == NULL) {
-		ERROR(ENOMEM, "unable to duplicate command string\n");
+		ERROR(ENOMEM, "unable to duplicate command string");
 		return -1;
 	}
 	size_t argCount;
@@ -119,7 +119,7 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 	size_t size = _this->pipes_list_base_size;
 	PipeList pipes = calloc(size, sizeof(*pipes));
 	if (pipes == NULL) {
-		ERROR(ENOMEM, "Unable to allocate PipeList of size %d\n", size);
+		ERROR(ENOMEM, "Unable to allocate PipeList of size %d", size);
 		return NULL;
 	}
 	size_t index = 0;
@@ -152,7 +152,7 @@ VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* l
 	size_t size = _this->io_modifier_list_base_size;
 	IoModifierList ioModifierList = calloc(size, sizeof(*ioModifierList));
 	if (ioModifierList == NULL) {
-		ERROR(ENOMEM, "Unable to allocate IoModifierList of size %d\n", size);
+		ERROR(ENOMEM, "Unable to allocate IoModifierList of size %d", size);
 		return NULL;
 	}
 	Token symbol;
@@ -165,7 +165,7 @@ VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* l
 		}
 		IoModifierType type = (IoModifierType) modifier;
 		if (!lexer_next_symbol(lexer)) {
-			ERROR(EINVAL, "Unable to parse IO modifier target\n");
+			ERROR(EINVAL, "Unable to parse IO modifier target");
 			return NULL;
 		}
 		symbol = lexer_current_symbol(lexer);
@@ -177,7 +177,7 @@ VISIBILITY_PRIVATE IoModifierList parse_io_modifier_list(Parser* _this, Lexer* l
 		}
 		ioModifierList[index++] = io_modifier_new(type, strdup(lexer_current_string(lexer)));
 		if (ioModifierList[index - 1]->target == NULL) {
-			ERROR(ENOMEM, "Unable to duplicate modifier target string\n");
+			ERROR(ENOMEM, "Unable to duplicate modifier target string");
 			return NULL;
 		}
 	} while (lexer_next_symbol(lexer));
@@ -219,7 +219,7 @@ VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 	size_t size = _this->command_list_base_size;
 	table->lines = calloc(size, sizeof(*(table->lines)));
 	if (table == NULL) {
-		ERROR(ENOMEM, "Unable to allocate command list of size %d\n", size);
+		ERROR(ENOMEM, "Unable to allocate command list of size %d", size);
 		return NULL;
 	}
 	size_t index = 0;

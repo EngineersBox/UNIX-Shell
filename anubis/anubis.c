@@ -91,7 +91,7 @@ int shell_core(char* line) {
 		return 1;
 	}
 	int ret;
-	command_table_dump(table);
+	//command_table_dump(table);
 	if ((ret = execute(table))) {
 		command_table_free(table);
 		lexer_free(&lexer);
@@ -103,7 +103,7 @@ int shell_core(char* line) {
 }
 
 int next_line(char** line, size_t* len) {
-	printf("anubis> ");
+	fprintf(stdout, "anubis> ");
 	return getline(line, len, stdin);
 }
 
@@ -111,14 +111,10 @@ int shell_interactive() {
 	char* line;
 	size_t len = 0;
 	ssize_t lineSize = 0;
-	int ret;
 	while ((lineSize = next_line(&line, &len)) > 0) {
 		// TODO: Make this terminate/return only when a fatal shell error occurs,
 		//       if it is a command error then just continue with prompt again
-		if ((ret = shell_core(line))) {
-			ERROR(ret, "An error occurred: %s\n", strerror(ret));
-		}
-		fprintf(stderr, "ERR: %d\n", ret);
+		shell_core(line);
 	}
 	free(line);
 	return 0;

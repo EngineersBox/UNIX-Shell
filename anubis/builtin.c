@@ -16,11 +16,11 @@ BuiltIn built_in_commands[] = {
 
 int builtin_cd(char** args, size_t argCount) {
 	if (argCount == 0 || argCount > 1) {
-		ERROR(EINVAL, "command 'cd' expects 1 command, got %d\n", argCount);
+		ERROR(EINVAL, "command 'cd' expects 1 command, got %d", argCount);
 		return EINVAL;
 	}
 	if (chdir(args[0]) != 0) {
-		ERROR(errno, "cd: %s\n", strerror(errno));
+		ERROR(errno, "cd:");
 		return errno;
 	}
 	return 0;
@@ -28,7 +28,7 @@ int builtin_cd(char** args, size_t argCount) {
 
 int builtin_exit(char** args, size_t argCount) {
 	if (argCount > 0) {
-		ERROR(EINVAL, "command 'exit' expects no arguments, got %d\n", argCount);
+		ERROR(EINVAL, "command 'exit' expects no arguments, got %d", argCount);
 		return EINVAL;
 	}
 	exit(0);
@@ -39,10 +39,9 @@ int builtin_path(char** args, size_t argCount) {
 		path_clear();
 		return 0;
 	}
-	fprintf(stderr, "ADDING PATHS\n");
 	int ret = path_add(args, argCount);
 	if (ret != 0) {
-		ERROR(errno, "path: %s\n", strerror(errno));
+		ERROR(errno, "path:");
 		return errno;
 	}
 	return 0;

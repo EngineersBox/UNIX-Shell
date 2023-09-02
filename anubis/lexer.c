@@ -40,7 +40,7 @@ int lexer_reset(Lexer* _this, char* source) {
 	_this->symbol = -1;
 	_this->source_len = strlen(source);
 	if (_this->source_len == 0) {
-		ERROR(EINVAL, "Source must not be empty\n");
+		ERROR(EINVAL, "Source must not be empty");
 		return 1;
 	}
 	_this->cchar = source[0];

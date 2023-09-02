@@ -35,22 +35,29 @@ static IO stdio_save() {
 }
 
 inline static int io_restore(IO* stdio) {
+	//fprintf(stderr, "RESTORE: %d -> %d\n", stdio->in, STDIN_FILENO);
 	errno_return(dup2(stdio->in, STDIN_FILENO), -1, "Unable to duplicate STDIN");
+	//fprintf(stderr, "CLOSED: %d\n", STDIN_FILENO);
+	//fprintf(stderr, "RESTORE: %d -> %d\n", stdio->out, STDOUT_FILENO);
 	errno_return(dup2(stdio->out, STDOUT_FILENO), -1, "Unable to duplicate STDOUT");
+	//fprintf(stderr, "CLOSED: %d\n", STDOUT_FILENO);
 	errno_return(close(stdio->in), -1, "Unable to close STDIN");
+	//fprintf(stderr, "CLOSED: %d\n", stdio->in);
 	errno_return(close(stdio->out), -1, "Unable to close STDOUT");
+	//fprintf(stderr, "CLOSED: %d\n", stdio->out);
 	return 0;
 }
 
 inline static int redirect(int fd, int std) {
 	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std,);
+	//fprintf(stderr, "REDIRECT: %d -> %d\n", fd, std);
 	errno_return(close(fd), -1, "Unable to close %d", fd,);
+	//fprintf(stderr, "CLOSED: %d\n", fd);
 	return 0;
 }
 
 static int exec_child(Command* command, int selfPipe[2]) {
 	close(selfPipe[READ_PORT]);
-	fprintf(stderr, "Executing: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	char* resolved = path_resolve(command->command);
 	if (resolved == NULL) {
 		self_pipe_send(selfPipe, ENOENT);
@@ -58,18 +65,17 @@ static int exec_child(Command* command, int selfPipe[2]) {
 	}
 	checked_free(command->command);
 	command->command = command->args[0] = resolved;
-	fprintf(stderr, "Resolved: %s %s %s\n", command->command, command->args[0], command->args[1]);
 	execv(command->command, command->args);
 	self_pipe_send(selfPipe, errno);
 	exit(0);
 }
 
-static int configure_output(bool isLast, IO stdio, IO fileio, char* outfile) {
+static int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
 	if (isLast) {
 		if (outfile != NULL) {
-			fileio.out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+			fileio->out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
 		} else {
-			fileio.out = dup(stdio.out);
+			fileio->out = dup(stdio->out);
 		}
 		return 0;
 	}
@@ -77,8 +83,8 @@ static int configure_output(bool isLast, IO stdio, IO fileio, char* outfile) {
 	// Create a pipe
 	int pipes[2];
 	errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
-	fileio.out = pipes[WRITE_PORT];
-	fileio.in = pipes[READ_PORT];
+	fileio->out = pipes[WRITE_PORT];
+	fileio->in = pipes[READ_PORT];
 	return 0;
 }
 
@@ -109,6 +115,7 @@ static int execute_command_line(CommandLine* line) {
 
 	// Save stdin/stdout
 	IO stdio = stdio_save();
+	//fprintf(stderr, "SAVED: %d, %d\n", stdio.in, stdio.out);
 	IO fileio = io_new();
 
 	// Set initial input
@@ -127,7 +134,7 @@ static int execute_command_line(CommandLine* line) {
 		// Setup output
 		transparent_return(configure_output(
 			i == line->pipeCount -1,
-			stdio, fileio,
+			&stdio, &fileio,
 			outfile
 		));
 		
@@ -142,6 +149,7 @@ static int execute_command_line(CommandLine* line) {
 			exec_child(line->pipes[i], selfPipe);
 		}
 		if (self_pipe_poll(selfPipe, &err)) {
+			ERROR(err, "%s", line->pipes[i]->command);
 			close(selfPipe[READ_PORT]);
 			return err;
 		}

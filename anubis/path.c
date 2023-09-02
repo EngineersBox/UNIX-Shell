@@ -66,7 +66,7 @@ static char* join_paths(const char* dir, const char* file) {
 	int pathLen = dirLen + strlen(file) + 2;
 	char* newPath = calloc(pathLen, sizeof(*newPath));
 	if (newPath == NULL) {
-		ERROR(errno, "Unable to allocate buffer to join paths\n");
+		ERROR(errno, "Unable to allocate buffer to join paths");
 		return NULL;
 	}
 	strcpy(newPath, dir);
