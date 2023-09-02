@@ -213,7 +213,11 @@ VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 		return NULL;
 	}
 	size_t index = 0;
-	while (lexer_next_symbol(lexer) && lexer_current_symbol(lexer) != EOI) {
+	Token symbol;
+	while (lexer_next_symbol(lexer) && (symbol = lexer_current_symbol(lexer)) != EOI) {
+		if (symbol == AMPERSAND) {
+			continue;
+		}
 		CommandLine* cmdLine = parse_command_line(_this, lexer);
 		if (cmdLine == NULL) {
 			return NULL;

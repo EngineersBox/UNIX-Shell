@@ -108,10 +108,7 @@ void next_char(Lexer* _this) {
 		HANDLE_NEXT_STRING;\
 		next_char(_this);\
 		_this->symbol = (token);\
-		while (skipSequential && _this->cchar == literal) {\
-			next_char(_this);\
-		}\
-		if (skipSequential) {\
+		if (skipSequential && _this->pos < _this->source_len - 1 && _this->source[_this->pos + 1] == literal) {\
 			goto read;\
 		}\
 		break

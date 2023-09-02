@@ -142,14 +142,13 @@ static int execute_command_line(CommandLine* line) {
 			&stdio, &fileio,
 			outfile
 		));
-		
+	
 		// Redirect output
 		transparent_return(redirect(fileio.out, STDOUT_FILENO));
 
 		int selfPipe[2];
 		ret_return(self_pipe_new(selfPipe), != 0, "Unable to create selfPipe");
-		ret = fork();
-		if (ret == 0) {
+		if (fork() == 0) {
 			// Create child process
 			exec_child(line->pipes[i], selfPipe);
 		}
