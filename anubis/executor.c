@@ -49,7 +49,10 @@ inline static int redirect(int fd, int std) {
 }
 
 static int exec_child(Command* command, int selfPipe[2]) {
-	close(selfPipe[READ_PORT]);
+	if (close(selfPipe[READ_PORT])) {
+		ERROR(errno, "Unabe to close self pipe read port from child");
+		exit(errno);
+	}
 	char* resolved = path_resolve(command->command);
 	if (resolved == NULL) {
 		self_pipe_send(selfPipe, ENOENT);
@@ -63,8 +66,10 @@ static int exec_child(Command* command, int selfPipe[2]) {
 }
 
 static int configure_input(char* infile, IO* stdio, IO* fileio) {
-	if (infile != NULL && (fileio->in = open(infile, O_RDONLY)) == -1) {
-		return errno;
+	if (infile != NULL) {
+		if ((fileio->in = open(infile, O_RDONLY)) == -1) {
+			return errno;
+		}
 	} else if ((fileio->in = dup(stdio->in)) == -1) {
 		return errno;
 	}
@@ -72,20 +77,20 @@ static int configure_input(char* infile, IO* stdio, IO* fileio) {
 }
 
 static int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
-	if (isLast) {
-		if (outfile != NULL) {
-			fileio->out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
-		} else {
-			fileio->out = dup(stdio->out);
+	if (!isLast) {
+		// Not last command (piped)
+		// Create a pipe
+		int pipes[2];
+		errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
+		fileio->out = pipes[WRITE_PORT];
+		fileio->in = pipes[READ_PORT];
+	} else if (outfile != NULL) {
+		if ((fileio->out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR)) == -1) {
+			return errno;
 		}
-		return 0;
+	} else if ((fileio->out = dup(stdio->out)) == -1) {
+		return errno;	
 	}
-	// Not last command (piped)
-	// Create a pipe
-	int pipes[2];
-	errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
-	fileio->out = pipes[WRITE_PORT];
-	fileio->in = pipes[READ_PORT];
 	return 0;
 }
 
@@ -100,35 +105,28 @@ static int invoke_builtin_checked(Command* command) {
 
 static int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
-
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
 	char* outfile = checked_invocation(strdup, line->ioModifiers->out);
-
 	// Save stdin/stdout
 	IO stdio = stdio_save();
 	//fprintf(stderr, "SAVED: %d, %d\n", stdio.in, stdio.out);
 	IO fileio = io_new();
-
 	// Setup input
 	int ret;
 	transparent_return(configure_input(infile, &stdio, &fileio));
-
 	int err = 0;
 	for (int i = 0; i < line->pipeCount; i++) {
 		// Redirect input
 		transparent_return(redirect(fileio.in, STDIN_FILENO));
-
 		// Setup output
 		transparent_return(configure_output(
-			i == line->pipeCount -1,
+			i == line->pipeCount - 1,
 			&stdio, &fileio,
 			outfile
 		));
-	
 		// Redirect output
 		transparent_return(redirect(fileio.out, STDOUT_FILENO));
-
 		// Invoke builtins conditonally (allows for piped usage)
 		Command* command = line->pipes[i];
 		err = invoke_builtin_checked(command);
@@ -138,30 +136,34 @@ static int execute_command_line(CommandLine* line) {
 			ERROR(err, "%s", command->command);
 			break;
 		}
-
 		int selfPipe[2];
 		ret_return(self_pipe_new(selfPipe), != 0, "Unable to create selfPipe");
-		if (fork() == 0) {
+		if ((ret = fork()) == 0) {
 			// Create child process
 			exec_child(command, selfPipe);
+		} else if (ret == -1) {
+			err = errno;
+			ERROR(err, "Failed child fork");
+			break;
 		}
+		// Await error byte or close-on-exec
 		if (self_pipe_poll(selfPipe, &err)) {
 			ERROR(err, "%s", command->command);
-			close(selfPipe[READ_PORT]);
+			if (close(selfPipe[READ_PORT])) {
+				ERROR(errno, "Unable to close self pipe read port");
+				// Allow fall through on double failure to capture original error not secondary close failure
+			}
 			break;
 		}
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
 		err = 0;
 	}
-
 	// Restore in/out defaults
 	transparent_return(io_restore(&stdio));
-
 	if (!line->bgOp) {
 		// Wait for commands
 		while (wait(NULL) >= 0);
 	}
-
 	return err;
 }
 
