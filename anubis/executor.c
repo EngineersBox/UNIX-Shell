@@ -94,6 +94,28 @@ LINKAGE_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char* o
 		// Create a pipe
 		int pipes[2];
 		errno_return(pipe(pipes), -1, "Unable to construct pipe to connect commands");
+		/* NOTE: In theory you could do zero-copy between processes to avoid buffered IPC that
+		 *       is the standard pipe(...) way. Something like this: first create 2 common files
+		 *       to use between processes and then mmap() them into memory progressizely. First
+		 *       one is mapped for the previous process then when the next process starts it maps
+		 *       its receiver file into mem (these ping-pong between sequential processes). On
+		 *       the writing side (previous proc) map it over STDOUT and vmsplice(...) it through tee
+		 *       to a pipe, then on the reading proc splice(...) it into the receiving memory area.
+		 *       Here, vmsplice(...) should be configured with SPLICE_F_GIFT to allow for pages to
+		 *       be released back to the kernel and then ownership transfered to the reading proc.
+		 *       Using tee means that page references are copied between the procs without needing to
+		 *       remap addresses once the recieveing proc has got a hold of the addresses for the page(s).
+		 *       Downside of this is that since we are gifting pages, we can technically write an
+		 *       infinite number and consume all memory space since the kernel will only GC the yielded
+		 *       pages once the reading proc has released them. So the reading proc would need to
+		 *       consume and release the pages at the same rate or quicker than the writing proc.
+		 *       Given that we are saving on data copy by doing zero-copy through page ownship transfer
+		 *       through the kernel, this could very well be less efficient for small data sizes.
+		 *       Also the page cache might take a beating if pages are not released fast enough since
+		 *       it would be filled with pages that are held by the kernel but not used by the reading
+		 *       proc yet, or yielded for GC. Definitely some issues to consider before a full
+		 *       implementation is possible.
+		 */
 		fileio->out = pipes[WRITE_PORT];
 		fileio->in = pipes[READ_PORT];
 	} else if (outfile != NULL) {
