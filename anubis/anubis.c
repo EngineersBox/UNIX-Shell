@@ -14,6 +14,7 @@
 #include "path.h"
 #include "mem_utils.h"
 #include "checks.h"
+#include "visibility.h"
 
 #define INTERACTIVE 1
 #define BATCH 2
@@ -24,7 +25,7 @@ static CommandTable* table = NULL;
 static Lexer* lexer = NULL;
 static char* line = NULL;
 
-static void exit_handler(void) {
+LINKAGE_PRIVATE void exit_handler(void) {
 	// Wait for all child processes to exit
 	while (wait(NULL) >= 0);
 	// Clean up resources
@@ -34,7 +35,7 @@ static void exit_handler(void) {
 	checked_free(line);
 }
 
-static int shell_core(char* _line) {
+LINKAGE_PRIVATE int shell_core(char* _line) {
 	if (!initialised) {
 		parser = parser_default();
 		initialised = true;
@@ -52,14 +53,14 @@ static int shell_core(char* _line) {
 	return 0;
 }
 
-static int next_line(char** _line, size_t* len, FILE* stream) {
+LINKAGE_PRIVATE int next_line(char** _line, size_t* len, FILE* stream) {
 	if (stream == stdin) {
 		fprintf(stdout, "anubis> ");
 	}
 	return getline(_line, len, stream);
 }
 
-static int shell_stream(int mode, char* filename) {
+LINKAGE_PRIVATE int shell_stream(int mode, char* filename) {
 	FILE* stream = stdin;
 	if (mode == BATCH && (stream = fopen(filename, "r")) == NULL) {
 		ERROR(errno, "Unable to open file to stream");
@@ -81,7 +82,7 @@ static int shell_stream(int mode, char* filename) {
 	return 0;
 }
 
-int main(int argc, char** argv) {
+LINKAGE_PUBLIC int main(int argc, char** argv) {
 	int ret;
 	transparent_return(atexit(exit_handler));
 	if (argc > 2) {
