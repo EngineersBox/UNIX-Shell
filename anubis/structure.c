@@ -4,7 +4,7 @@
 #include "mem_utils.h"
 #include "visibility.h"
 
-VISIBILITY_PUBLIC Command* command_new(char* command, Args args, size_t argCount) {
+LINKAGE_PUBLIC Command* command_new(char* command, Args args, size_t argCount) {
 	Command* cmd = malloc(sizeof(*cmd));
 	INSTANCE_NULL_CHECK_RETURN("command", cmd, NULL);
 	cmd->command = command;
@@ -13,7 +13,7 @@ VISIBILITY_PUBLIC Command* command_new(char* command, Args args, size_t argCount
 	return cmd;
 }
 
-VISIBILITY_PUBLIC void command_free(Command* command) {
+LINKAGE_PUBLIC void command_free(Command* command) {
 	INSTANCE_NULL_CHECK("command", command);
 	checked_free(command->command);
 	checked_array_free(command->args, command->argCount - 1, checked_free);
@@ -21,20 +21,20 @@ VISIBILITY_PUBLIC void command_free(Command* command) {
 	checked_free(command);
 }
 
-VISIBILITY_PUBLIC IoModifiers* io_modifiers_new(char* outTrunc) {
+LINKAGE_PUBLIC IoModifiers* io_modifiers_new(char* outTrunc) {
 	IoModifiers* modifiers = malloc(sizeof(*modifiers));
 	INSTANCE_NULL_CHECK_RETURN("IoModifiers", modifiers, NULL);
 	modifiers->outTrunc = outTrunc;
 	return modifiers;
 }
 
-VISIBILITY_PUBLIC void io_modifiers_free(IoModifiers* modifiers) {
+LINKAGE_PUBLIC void io_modifiers_free(IoModifiers* modifiers) {
 	INSTANCE_NULL_CHECK("IoModifiers", modifiers);
 	checked_free(modifiers->outTrunc);
 	checked_free(modifiers);
 }
 
-VISIBILITY_PUBLIC CommandLine* command_line_new(PipeList pipes, size_t pipeCount, IoModifiers* ioModifiers, BackgroundOp bgOp) {
+LINKAGE_PUBLIC CommandLine* command_line_new(PipeList pipes, size_t pipeCount, IoModifiers* ioModifiers, BackgroundOp bgOp) {
 	CommandLine* cmdLine = malloc(sizeof(*cmdLine));
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", cmdLine, NULL);
 	cmdLine->pipes = pipes;
@@ -44,7 +44,7 @@ VISIBILITY_PUBLIC CommandLine* command_line_new(PipeList pipes, size_t pipeCount
 	return cmdLine;
 }
 
-VISIBILITY_PUBLIC void command_line_free(CommandLine* line) {
+LINKAGE_PUBLIC void command_line_free(CommandLine* line) {
 	INSTANCE_NULL_CHECK("CommandLine", line);
 	checked_array_free(line->pipes, line->pipeCount, command_free);
 	checked_free(line->pipes);
@@ -52,7 +52,7 @@ VISIBILITY_PUBLIC void command_line_free(CommandLine* line) {
 	checked_free(line);
 }
 
-VISIBILITY_PUBLIC CommandTable* command_table_new() {
+LINKAGE_PUBLIC CommandTable* command_table_new() {
 	CommandTable* table = malloc(sizeof(*table));
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, NULL);
 	table->lineCount = 0;
@@ -60,7 +60,7 @@ VISIBILITY_PUBLIC CommandTable* command_table_new() {
 	return table;
 }
 
-VISIBILITY_PUBLIC void command_table_free(CommandTable* table) {
+LINKAGE_PUBLIC void command_table_free(CommandTable* table) {
 	if (table == NULL) {
 		// Invoked in shutdown hook, ignore null entries as they are already free
 		return;
@@ -70,7 +70,7 @@ VISIBILITY_PUBLIC void command_table_free(CommandTable* table) {
 	checked_free(table);
 }
 
-VISIBILITY_PUBLIC void command_table_dump(CommandTable* table) {
+LINKAGE_PUBLIC void command_table_dump(CommandTable* table) {
 	INSTANCE_NULL_CHECK("CommandTable", table);
 	for (int i = 0; i < table->lineCount; i++) {
 		CommandLine* line = table->lines[i];

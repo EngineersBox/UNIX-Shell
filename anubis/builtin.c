@@ -18,7 +18,7 @@ BuiltIn built_in_commands[] = {
 
 size_t built_in_commands_size = 3;
 
-VISIBILITY_PUBLIC int builtin_cd(char** args, size_t argCount) {
+LINKAGE_PUBLIC int builtin_cd(char** args, size_t argCount) {
 	if (argCount == 0 || argCount > 1) {
 		return EINVAL;
 	}
@@ -28,7 +28,7 @@ VISIBILITY_PUBLIC int builtin_cd(char** args, size_t argCount) {
 	return 0;
 }
 
-VISIBILITY_PUBLIC int builtin_exit(char** args, size_t argCount) {
+LINKAGE_PUBLIC int builtin_exit(char** args, size_t argCount) {
 	if (argCount > 0) {
 		return EINVAL;
 	}
@@ -36,7 +36,7 @@ VISIBILITY_PUBLIC int builtin_exit(char** args, size_t argCount) {
 	__builtin_unreachable();
 }
 
-VISIBILITY_PUBLIC int builtin_path(char** args, size_t argCount) {
+LINKAGE_PUBLIC int builtin_path(char** args, size_t argCount) {
 	if (argCount == 0) {
 		path_clear();
 		return 0;
@@ -48,7 +48,7 @@ VISIBILITY_PUBLIC int builtin_path(char** args, size_t argCount) {
 	return 0;
 }
 
-VISIBILITY_PRIVATE BuiltIn* builtin_binary_search(char* command) {
+LINKAGE_PRIVATE BuiltIn* builtin_binary_search(char* command) {
 	int lower = 0;
 	int mid;
 	int upper = built_in_commands_size - 1;
@@ -68,7 +68,7 @@ VISIBILITY_PRIVATE BuiltIn* builtin_binary_search(char* command) {
 	return NULL;
 }
 
-VISIBILITY_PUBLIC int builtin_execv(char* command, char** args, size_t argCount) {
+LINKAGE_PUBLIC int builtin_execv(char* command, char** args, size_t argCount) {
 	BuiltIn* cmd = builtin_binary_search(command);
 	if (cmd != NULL) {
 		return cmd->command(args, argCount);

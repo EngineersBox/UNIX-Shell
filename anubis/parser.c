@@ -51,7 +51,7 @@ Parser parser_default() {
 		return NULL;\
 	}
 
-VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
+LINKAGE_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);	
 	if (lexer_current_symbol(lexer) != STRING) {
 		*count = 0;
@@ -85,7 +85,7 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 }
 
 // -1: Failure, 0: Continue, 1: Terminate
-VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Command** commandAndArgs) {
+LINKAGE_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Command** commandAndArgs) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, -1);
 	Token prefix = lexer_current_symbol(lexer);
 	char* command;
@@ -110,7 +110,7 @@ VISIBILITY_PRIVATE int parse_command_and_args(Parser* _this, Lexer* lexer, Comma
 	return lexer_current_symbol(lexer) != PIPE;
 } 
 
-VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t* count) {
+LINKAGE_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t* count) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	size_t size = _this->pipes_list_base_size;
 	PipeList pipes = calloc(size, sizeof(*pipes));
@@ -146,7 +146,7 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 		}\
 		break
 
-VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) {
+LINKAGE_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	IoModifiers* ioModifiers = io_modifiers_new(NULL);
 	verrno_return(ioModifiers, NULL, "Unable to allocate IoModifiers");
@@ -176,12 +176,12 @@ VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) 
 	return ioModifiers;
 }
 
-VISIBILITY_PRIVATE BackgroundOp parse_background_op(Parser* _this, Lexer* lexer) {
+LINKAGE_PRIVATE BackgroundOp parse_background_op(Parser* _this, Lexer* lexer) {
 	Token token = lexer_current_symbol(lexer);
 	return token == AMPERSAND;
 }
 
-VISIBILITY_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) {
+LINKAGE_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, 0);
 	size_t pipeCount = 0;
 	PipeList pipes = parse_pipe_list(_this, lexer, &pipeCount);
@@ -201,7 +201,7 @@ VISIBILITY_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) 
 	);
 }
 
-VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
+LINKAGE_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	CommandTable* table = command_table_new();
 	verrno_return(table, NULL, "Unable to allocate CommandTable");

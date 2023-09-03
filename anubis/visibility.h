@@ -1,8 +1,8 @@
-#ifndef ANUBIS_VISIBILITY_H
-#define ANUBIS_VISIBILITY_H
+#ifndef ANUBIS_LINKAGE_H
+#define ANUBIS_LINKAGE_H
 
-#define VISIBILITY_PUBLIC
-#define VISIBILITY_PRIVATE static
-#define VISIBILITY_TRANSPARENT static inline
+#define LINKAGE_PUBLIC
+#define LINKAGE_PRIVATE static
+#define LINKAGE_TRANSPARENT static inline
 
-#endif // ANUBIS_VISIBILITY_H
+#endif // ANUBIS_LINKAGE_H

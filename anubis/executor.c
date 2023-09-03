@@ -26,12 +26,12 @@ typedef struct IO {
 } IO;
 
 __attribute__((hot))
-VISIBILITY_PRIVATE IO io_new() {
+LINKAGE_PRIVATE IO io_new() {
 	return (IO) { 0 };
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE IO stdio_save() {
+LINKAGE_PRIVATE IO stdio_save() {
 	return (IO) {
 		dup(STDIN_FILENO),
 		dup(STDOUT_FILENO)
@@ -39,7 +39,7 @@ VISIBILITY_PRIVATE IO stdio_save() {
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE int io_restore(IO* stdio) {
+LINKAGE_PRIVATE int io_restore(IO* stdio) {
 	errno_return(dup2(stdio->in, STDIN_FILENO), FAIL_COND, "Unable to duplicate STDIN");
 	errno_return(dup2(stdio->out, STDOUT_FILENO), FAIL_COND, "Unable to duplicate STDOUT");
 	errno_return(close(stdio->in), FAIL_COND, "Unable to close STDIN");
@@ -48,14 +48,14 @@ VISIBILITY_PRIVATE int io_restore(IO* stdio) {
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE int redirect(int fd, int std) {
+LINKAGE_PRIVATE int redirect(int fd, int std) {
 	errno_return(dup2(fd, std), FAIL_COND, "Unable to redirect %d -> %d", fd, std);
 	errno_return(close(fd), FAIL_COND, "Unable to close %d", fd);
 	return 0;
 }
 
 __attribute__((hot, noreturn))
-VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
+LINKAGE_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 	if (close(selfPipe[READ_PORT])) {
 		ERROR(errno, "Unabe to close self pipe read port from child");
 		exit(errno);
@@ -76,7 +76,7 @@ VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
+LINKAGE_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
 	if (infile != NULL) {
 		if ((fileio->in = open(infile, O_RDONLY)) == FAIL_COND) {
 			return errno;
@@ -88,7 +88,7 @@ VISIBILITY_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
+LINKAGE_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char* outfile) {
 	if (!isLast) {
 		// Not last command (piped)
 		// Create a pipe
@@ -107,7 +107,7 @@ VISIBILITY_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE int invoke_builtin_checked(Command* command) {
+LINKAGE_PRIVATE int invoke_builtin_checked(Command* command) {
 	size_t argCount = DEC_FLOOR(DEC_FLOOR(command->argCount));
 	return builtin_execv(
 		command->command,
@@ -117,7 +117,7 @@ VISIBILITY_PRIVATE int invoke_builtin_checked(Command* command) {
 }
 
 __attribute__((hot))
-VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
+LINKAGE_PRIVATE int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
@@ -183,7 +183,7 @@ VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 }
 
 __attribute__((hot))
-VISIBILITY_PUBLIC int execute(CommandTable* table) {
+LINKAGE_PUBLIC int execute(CommandTable* table) {
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, 0);
 	int ret;
 	for (int i = 0; i < table->lineCount; i++) {

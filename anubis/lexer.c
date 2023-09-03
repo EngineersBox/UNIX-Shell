@@ -20,7 +20,7 @@ const char* token_names[] = {
 	[EOI] = "EOI"
 };
 
-VISIBILITY_PUBLIC Lexer* lexer_new(char* source) {
+LINKAGE_PUBLIC Lexer* lexer_new(char* source) {
 	Lexer* lexer = malloc(sizeof(*lexer));
 	lexer->source = NULL;
 	lexer->string = NULL;
@@ -28,7 +28,7 @@ VISIBILITY_PUBLIC Lexer* lexer_new(char* source) {
 	return lexer;
 }
 
-VISIBILITY_PUBLIC void lexer_free(Lexer* lexer) {
+LINKAGE_PUBLIC void lexer_free(Lexer* lexer) {
 	if (lexer == NULL) {
 		// Invoked in shutdown hook, ignore null entries as they are already free
 		return;
@@ -38,7 +38,7 @@ VISIBILITY_PUBLIC void lexer_free(Lexer* lexer) {
 	checked_free(lexer);
 }
 
-VISIBILITY_PUBLIC int lexer_reset(Lexer* _this, char* source) {
+LINKAGE_PUBLIC int lexer_reset(Lexer* _this, char* source) {
 	_LEXER_NULL_CHECK_RETURN(_this, 0);
 	INSTANCE_NULL_CHECK_RETURN("source", source, 0);
 	checked_free(_this->source);
@@ -61,7 +61,7 @@ VISIBILITY_PUBLIC int lexer_reset(Lexer* _this, char* source) {
 	return 1;
 }
 
-VISIBILITY_PUBLIC void lexer_print_state(Lexer* _this) {
+LINKAGE_PUBLIC void lexer_print_state(Lexer* _this) {
 	fprintf(
 		stderr,
 		"STATE: {\n\tPOS: %zu\n\tCHAR: %c\n\tSYMBOL: %s\n\tSOURCE LEN: %zu\n\tSOURCE: %s\n\tIS READING STRING: %s\n\tSTRING LEN: %zu\n\tSTRING POS: %zu\n\tSTRING:%s\n}\n",
@@ -78,7 +78,7 @@ VISIBILITY_PUBLIC void lexer_print_state(Lexer* _this) {
 }
 
 // 0: Finished, 1: Ignore, Other: failure
-VISIBILITY_PRIVATE int next_string(Lexer* _this) {
+LINKAGE_PRIVATE int next_string(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos < _this->string_pos) {
 		return 0;
@@ -96,7 +96,7 @@ VISIBILITY_PRIVATE int next_string(Lexer* _this) {
 	return 1;
 }
 
-VISIBILITY_TRANSPARENT void next_char(Lexer* _this) {
+LINKAGE_TRANSPARENT void next_char(Lexer* _this) {
 	_this->cchar = _this->source[_this->pos++];
 }
 
@@ -120,14 +120,14 @@ VISIBILITY_TRANSPARENT void next_char(Lexer* _this) {
 		}\
 		break
 
-VISIBILITY_TRANSPARENT void remove_char(Lexer* _this) {
+LINKAGE_TRANSPARENT void remove_char(Lexer* _this) {
 	memmove(&_this->source[_this->pos - 1], &_this->source[_this->pos], _this->source_len - _this->pos + 1);
 	_this->source_len--;
 	_this->pos--;
 	next_char(_this);
 }
 
-VISIBILITY_PUBLIC int lexer_next_symbol(Lexer* _this) {
+LINKAGE_PUBLIC int lexer_next_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	if (_this->pos >= _this->source_len - 1) {
 		_this->symbol = EOI;
@@ -202,12 +202,12 @@ string:
 	return 1;
 }
 
-VISIBILITY_PUBLIC int lexer_current_symbol(Lexer* _this) {
+LINKAGE_PUBLIC int lexer_current_symbol(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, -1);
 	return _this->symbol;
 }
 
-VISIBILITY_PUBLIC char* lexer_current_string(Lexer* _this) {
+LINKAGE_PUBLIC char* lexer_current_string(Lexer* _this) {
 	_LEXER_NULL_CHECK_RETURN(_this, NULL);
 	return _this->string;
 }
