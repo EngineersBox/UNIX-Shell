@@ -14,7 +14,7 @@ BuiltIn built_in_commands[] = {
 	{"exit", builtin_exit},
 	{"path", builtin_path},
 	{NULL, NULL}
-}; // TODO: Allow abitrary registration of commands
+}; // TODO: Allow programmatic abitrary registration of commands
 
 size_t built_in_commands_size = 3;
 

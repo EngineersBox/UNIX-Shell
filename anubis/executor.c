@@ -154,7 +154,7 @@ LINKAGE_PRIVATE int execute_command_line(CommandLine* line) {
 		if ((ret = fork()) == 0) {
 			// Create child process
 			exec_child(command, selfPipe);
-		} else if (ret == -1) {
+		} else if (ret == FAIL_COND) {
 			err = errno;
 			ERROR(err, "Failed child fork");
 			break;
@@ -187,9 +187,7 @@ LINKAGE_PUBLIC int execute(CommandTable* table) {
 	INSTANCE_NULL_CHECK_RETURN("CommandTable", table, 0);
 	int ret;
 	for (int i = 0; i < table->lineCount; i++) {
-		if ((ret = execute_command_line(table->lines[i]))) {
-			return ret;
-		}
+		transparent_return(execute_command_line(table->lines[i]));
 	}
 	return 0;
 }

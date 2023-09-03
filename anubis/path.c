@@ -106,8 +106,8 @@ LINKAGE_PRIVATE char* resolve_within_directory(char* searchable, char* dirPath) 
 	int n = scandir(dirPath, &dirEntries, directory_filter, alphasort);
 	filename = NULL;
 	bool found = n > 0;
-	while (found && n--) {
-		free(dirEntries[n]);
+	if (found) {
+		checked_array_free(dirEntries, n, free);
 	}
 	free(dirEntries);
 	if (!found) {
@@ -117,16 +117,24 @@ LINKAGE_PRIVATE char* resolve_within_directory(char* searchable, char* dirPath) 
 }
 
 LINKAGE_PRIVATE bool is_path(char* searchable) {
-	if (searchable == NULL) {
-		return false;
-	}
-	char* ptr = strchr(searchable, PATH_DELIMITER);
-	if (ptr == NULL) {
-		return false;
-	} else if ((uintptr_t) ptr == (uintptr_t) searchable) {
-		return true;
-	} else if (*(ptr - 1) == '\\') {
-		return is_path(ptr + 1);
+	char* _searchable = searchable;
+	while (true) {
+		if (_searchable == NULL) {
+			return false;
+		}
+		char* ptr = strchr(_searchable, PATH_DELIMITER);
+		if (ptr == NULL) {
+			// No slashes in string
+			return false;
+		} else if ((uintptr_t) ptr == (uintptr_t) _searchable) {
+			// Slash found at the start of the string
+			return true;
+		} else if (*(ptr - 1) == '\\') {
+			// Search over string beyond this escaped slash
+			_searchable = ptr + 1;
+			continue;
+		}
+		break;
 	}
 	return true;
 }
@@ -144,6 +152,7 @@ LINKAGE_PUBLIC char* path_resolve(char* executable) {
 		} else if (S_ISDIR(sstat.st_mode)) {
 			char* resolved = resolve_within_directory(executable, searchable);
 			if (resolved != NULL && access(resolved, F_OK | X_OK) == 0) {
+				// Directory has an entry that matches the given executable name
 				return resolved;
 			}
 			goto next;

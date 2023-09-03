@@ -5,7 +5,6 @@
 #define checked_array_free(array, size, element_free_handler) \
 	if ((array) != NULL) {\
 		for (int i = 0; i < (size); i++) {\
-			if ((array)[i] == NULL) continue;\
 			element_free_handler((array)[i]);\
 		}\
 	}
