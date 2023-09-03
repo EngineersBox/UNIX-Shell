@@ -65,10 +65,7 @@ LINKAGE_PRIVATE char* join_paths(const char* dir, const char* file) {
 	int dirLen = strlen(dir);
 	int pathLen = dirLen + strlen(file) + 2;
 	char* newPath = calloc(pathLen, sizeof(*newPath));
-	if (newPath == NULL) {
-		ERROR(errno, "Unable to allocate buffer to join paths");
-		return NULL;
-	}
+	verrno_return(newPath, NULL, "Unable to allocate buffer to join paths");
 	strcpy(newPath, dir);
 	if (dir[dirLen - 1] != PATH_DELIMITER) {
 		char delim[2] = "\0";

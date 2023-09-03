@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "checks.h"
 #include "visibility.h"
 
 #define READ_PORT 0
@@ -34,7 +35,7 @@ LINKAGE_PUBLIC int self_pipe_send(int selfPipe[2], int signal) {
 
 LINKAGE_PUBLIC int self_pipe_poll(int selfPipe[2], int* error) {
 	int count = -1;
-	close(selfPipe[WRITE_PORT]);
+	errno_return(close(selfPipe[WRITE_PORT]), -1, "Unable to close %d", selfPipe[WRITE_PORT]);
 	// Terminate if the pipe closes or we read a byte from the pipe
 	while ((count = read(selfPipe[READ_PORT], error, sizeof(errno))) == -1) {
 		if (errno != EAGAIN && errno != EINTR) {
