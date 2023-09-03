@@ -58,17 +58,20 @@ VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 	if (close(selfPipe[READ_PORT])) {
 		ERROR(errno, "Unabe to close self pipe read port from child");
 		exit(errno);
+		__builtin_unreachable();
 	}
 	char* resolved = path_resolve(command->command);
 	if (resolved == NULL) {
 		self_pipe_send(selfPipe, ENOENT);
 		exit(0);
+		__builtin_unreachable();
 	}
 	checked_free(command->command);
 	command->command = resolved;
 	execv(command->command, command->args);
 	self_pipe_send(selfPipe, errno);
 	exit(0);
+	__builtin_unreachable();
 }
 
 __attribute__((hot))

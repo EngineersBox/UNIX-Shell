@@ -82,15 +82,22 @@ VISIBILITY_PRIVATE char* join_paths(const char* dir, const char* file) {
 
 static char* filename = NULL;
 
+#define NON_EXEC_TARGET(entry) (\
+	(entry) != DT_REG\
+	&& (entry) != DT_LNK\
+	&& (entry) != DT_CHR\
+	&& (entry) != DT_UNKNOWN\
+	)
+
 VISIBILITY_PRIVATE int directory_filter(const struct dirent* dir) {
-	if (!dir) {
+	if (!dir || NON_EXEC_TARGET(dir->d_type) || strcmp(dir->d_name, filename)) {
 		return 0;
-	} else if (dir->d_type != DT_REG) {
-		return 0;
-	} else if (strcmp(dir->d_name, filename) == 0) {
-		return 1;
 	}
-	return 0;
+	if (dir->d_type == DT_LNK || dir->d_type == DT_UNKNOWN) {
+		struct stat sstat;
+		return stat(filename, &sstat) && (S_ISREG(sstat.st_mode) || S_ISCHR(sstat.st_mode));
+	}
+	return 1;
 }
 
 VISIBILITY_PRIVATE char* resolve_within_directory(char* searchable, char* dirPath) {

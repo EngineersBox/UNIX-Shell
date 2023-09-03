@@ -13,6 +13,7 @@
 #include "structure.h"
 #include "path.h"
 #include "mem_utils.h"
+#include "checks.h"
 
 #define INTERACTIVE 1
 #define BATCH 2
@@ -81,15 +82,15 @@ int shell_stream(int mode, char* filename) {
 }
 
 int main(int argc, char** argv) {
-	atexit(exit_handler);
+	int ret;
+	transparent_return(atexit(exit_handler));
 	if (argc > 2) {
 		ERROR(EINVAL, "usage: anubis [script]");
 		return 1;
 	}
 	path_init();
-	int ret = shell_stream(
+	transparent_return(shell_stream(
 		argc,
 		argc == BATCH ? argv[1] : NULL
-	);
-	return ret;
+	));
 }

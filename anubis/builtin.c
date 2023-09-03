@@ -33,6 +33,7 @@ VISIBILITY_PUBLIC int builtin_exit(char** args, size_t argCount) {
 		return EINVAL;
 	}
 	exit(0);
+	__builtin_unreachable();
 }
 
 VISIBILITY_PUBLIC int builtin_path(char** args, size_t argCount) {
