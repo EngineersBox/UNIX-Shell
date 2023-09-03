@@ -21,16 +21,16 @@ VISIBILITY_PUBLIC void command_free(Command* command) {
 	checked_free(command);
 }
 
-VISIBILITY_PUBLIC IoModifiers* io_modifiers_new(char* out) {
+VISIBILITY_PUBLIC IoModifiers* io_modifiers_new(char* outTrunc) {
 	IoModifiers* modifiers = malloc(sizeof(*modifiers));
 	INSTANCE_NULL_CHECK_RETURN("IoModifiers", modifiers, NULL);
-	modifiers->out = out;
+	modifiers->outTrunc = outTrunc;
 	return modifiers;
 }
 
 VISIBILITY_PUBLIC void io_modifiers_free(IoModifiers* modifiers) {
 	INSTANCE_NULL_CHECK("IoModifiers", modifiers);
-	checked_free(modifiers->out);
+	checked_free(modifiers->outTrunc);
 	checked_free(modifiers);
 }
 
@@ -83,8 +83,8 @@ VISIBILITY_PUBLIC void command_table_dump(CommandTable* table) {
 			fprintf(stderr, "]\n");
 		}
 		if (line->ioModifiers != NULL) {
-			if (line->ioModifiers->out != NULL) {
-				fprintf(stderr, "   [>] %s\n", line->ioModifiers->out);
+			if (line->ioModifiers->outTrunc != NULL) {
+				fprintf(stderr, "   [>] %s\n", line->ioModifiers->outTrunc);
 			}
 		}
 		fprintf(stderr, "   [&] %s\n", line->bgOp ? "true" : "false");

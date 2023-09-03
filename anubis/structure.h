@@ -19,10 +19,10 @@ typedef Command** PipeList;
 
 
 typedef struct IoModifiers {
-	char* out; // NOTE: Add support for other IO operators here (e.g. >>, <, etc)
+	char* outTrunc; // NOTE: Add support for other IO operators here (e.g. >>, <, etc)
 } IoModifiers;
 
-IoModifiers* io_modifiers_new(char* in);
+IoModifiers* io_modifiers_new(char* outTrunc);
 void io_modifiers_free(IoModifiers* modifiers);
 
 typedef bool BackgroundOp;

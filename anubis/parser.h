@@ -8,7 +8,6 @@
 
 #define DEFAULT_ARG_LIST_SIZE 3
 #define DEFAULT_PIPES_LIST_SIZE 1
-#define DEFAULT_IO_MODIFIER_LIST_SIZE 5
 #define DEFAULT_COMMAND_LIST_SIZE 5
 
 typedef struct Parser {
@@ -33,7 +32,7 @@ Parser parser_default();
  *		| Command;
  *
  * IoModifier:
- *		<GREATER> <STRING>;
+ *		| <GREATER> <STRING>;
  *
  * IoModifiers: IoModifier?;
  *
@@ -41,7 +40,7 @@ Parser parser_default();
  *
  * CommandLine: PipeList IoModifiers BackgroundOp;
  *
- * CommandList: CommandLine+;
+ * CommandList: CommandLine*;
  * =================================================
  */
 CommandTable* parse(Parser* parser, Lexer* lexer);

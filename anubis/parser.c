@@ -12,7 +12,7 @@
  *		| Command;
  *
  * IoModifier:
- *		<GREATER> <STRING>;
+ *		| <GREATER> <STRING>;
  *
  * IoModifiers: IoModifier?;
  *
@@ -20,7 +20,7 @@
  *
  * CommandLine: PipeList IoModifiers BackgroundOp;
  *
- * CommandList: CommandLine+;
+ * CommandList: CommandLine*;
  * =================================================
  */
 
@@ -68,6 +68,7 @@ VISIBILITY_PRIVATE Args parse_args(Parser* _this, Lexer* lexer, size_t* count) {
 		if (symbol != STRING) {
 			break;
 		} else if (index >= size - 1) {
+			// Resize the Args if we have more than the space allocated currently allows for
 			HANDLED_REALLOC(args, _this->arg_list_base_size);
 		}
 		verrno_return(
@@ -121,23 +122,34 @@ VISIBILITY_PRIVATE PipeList parse_pipe_list(Parser* _this, Lexer* lexer, size_t*
 		if (res == -1) {
 			return NULL;
 		} else if (index >= size - 1) {
+			// Resize the PipeList if we have more than the space allocated currently allows for
 			HANDLED_REALLOC(pipes, _this->pipes_list_base_size);
 		}
 		pipes[index++] = commandAndArgs;
 		if (res == 1) {
 			break;
 		}
-	} while (true);//while (lexer_next_symbol(lexer));
+	} while (true);
 	*count = index;
 	return pipes;
 }
 
+// Generified modifier handling
+#define CASE_MODIFIER(_symbol, field, name)\
+	case _symbol:\
+		if ((field) != NULL) {\
+			ERROR(EINVAL, "Multiple " name " redirection is not supported");\
+			return NULL;\
+		} else if (((field) = strdup(lexer_current_string(lexer))) == NULL) {\
+			ERROR(ENOMEM, "Unable to duplicate modifier target string");\
+			return NULL;\
+		}\
+		break
+
 VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	IoModifiers* ioModifiers = io_modifiers_new(NULL);
-	if (ioModifiers == NULL) {
-		return NULL;
-	}
+	verrno_return(ioModifiers, NULL, "Unable to allocate IoModifiers");
 	Token symbol;
 	size_t index = 0;
 	do { // NOTE: Loop is not neccessary for this implementation, but makes it easier for implementing other IO modifiers in future
@@ -155,14 +167,8 @@ VISIBILITY_PRIVATE IoModifiers* parse_io_modifiers(Parser* _this, Lexer* lexer) 
 			return NULL;
 		}
 		switch (symbol) {
-			case GREATER:
-				if (ioModifiers->out != NULL) {
-					ERROR(EINVAL, "Multiple output redirection is not supported");
-					return NULL;
-				} else if ((ioModifiers->out = strdup(lexer_current_string(lexer))) == NULL) {
-					ERROR(ENOMEM, "Unable to duplicate modifier target string");
-					return NULL;
-				}
+			// NOTE: With support for more modifiers, we would add more cases here
+			CASE_MODIFIER(GREATER, ioModifiers->outTrunc, "truncated output");
 			default: break;
 		}
 		index++;
@@ -198,7 +204,7 @@ VISIBILITY_PRIVATE CommandLine* parse_command_line(Parser* _this, Lexer* lexer) 
 VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 	INSTANCE_NULL_CHECK_RETURN("parser", _this, NULL);
 	CommandTable* table = command_table_new();
-	if (table == NULL) return NULL;
+	verrno_return(table, NULL, "Unable to allocate CommandTable");
 	size_t size = _this->command_list_base_size;
 	table->lines = calloc(size, sizeof(*(table->lines)));
 	verrno_return(table, NULL, "Unable to allocate command list of size %d", size);
@@ -212,6 +218,7 @@ VISIBILITY_PUBLIC CommandTable* parse(Parser* _this, Lexer* lexer) {
 		if (cmdLine == NULL) {
 			return NULL;
 		} else if (index >= size - 1) {
+			// Resize the table lines if we have more than the space allocated currently allows for
 			HANDLED_REALLOC(table->lines, _this->command_list_base_size);
 		}
 		table->lines[index++] = cmdLine;

@@ -25,14 +25,16 @@ static Lexer* lexer = NULL;
 static char* line = NULL;
 
 static void exit_handler(void) {
+	// Wait for all child processes to exit
+	while (wait(NULL) >= 0);
+	// Clean up resources
 	command_table_free(table);
 	lexer_free(lexer);
 	path_free();
 	checked_free(line);
-	while (wait(NULL) >= 0);
 }
 
-int shell_core(char* _line) {
+static int shell_core(char* _line) {
 	if (!initialised) {
 		parser = parser_default();
 		initialised = true;
@@ -46,20 +48,18 @@ int shell_core(char* _line) {
 	}
 	int ret;
 	//command_table_dump(table);
-	if ((ret = execute(table))) {
-		return ret;
-	}
+	transparent_return(execute(table));
 	return 0;
 }
 
-int next_line(char** _line, size_t* len, FILE* stream) {
+static int next_line(char** _line, size_t* len, FILE* stream) {
 	if (stream == stdin) {
 		fprintf(stdout, "anubis> ");
 	}
 	return getline(_line, len, stream);
 }
 
-int shell_stream(int mode, char* filename) {
+static int shell_stream(int mode, char* filename) {
 	FILE* stream = stdin;
 	if (mode == BATCH && (stream = fopen(filename, "r")) == NULL) {
 		ERROR(errno, "Unable to open file to stream");

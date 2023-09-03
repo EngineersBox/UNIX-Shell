@@ -18,6 +18,7 @@
 
 #define READ_PORT 0
 #define WRITE_PORT 1
+#define FAIL_COND -1
 
 typedef struct IO {
 	int in;
@@ -39,17 +40,17 @@ VISIBILITY_PRIVATE IO stdio_save() {
 
 __attribute__((hot))
 VISIBILITY_PRIVATE int io_restore(IO* stdio) {
-	errno_return(dup2(stdio->in, STDIN_FILENO), -1, "Unable to duplicate STDIN");
-	errno_return(dup2(stdio->out, STDOUT_FILENO), -1, "Unable to duplicate STDOUT");
-	errno_return(close(stdio->in), -1, "Unable to close STDIN");
-	errno_return(close(stdio->out), -1, "Unable to close STDOUT");
+	errno_return(dup2(stdio->in, STDIN_FILENO), FAIL_COND, "Unable to duplicate STDIN");
+	errno_return(dup2(stdio->out, STDOUT_FILENO), FAIL_COND, "Unable to duplicate STDOUT");
+	errno_return(close(stdio->in), FAIL_COND, "Unable to close STDIN");
+	errno_return(close(stdio->out), FAIL_COND, "Unable to close STDOUT");
 	return 0;
 }
 
 __attribute__((hot))
 VISIBILITY_PRIVATE int redirect(int fd, int std) {
-	errno_return(dup2(fd, std), -1, "Unable to redirect %d -> %d", fd, std);
-	errno_return(close(fd), -1, "Unable to close %d", fd);
+	errno_return(dup2(fd, std), FAIL_COND, "Unable to redirect %d -> %d", fd, std);
+	errno_return(close(fd), FAIL_COND, "Unable to close %d", fd);
 	return 0;
 }
 
@@ -77,10 +78,10 @@ VISIBILITY_PRIVATE int exec_child(Command* command, int selfPipe[2]) {
 __attribute__((hot))
 VISIBILITY_PRIVATE int configure_input(char* infile, IO* stdio, IO* fileio) {
 	if (infile != NULL) {
-		if ((fileio->in = open(infile, O_RDONLY)) == -1) {
+		if ((fileio->in = open(infile, O_RDONLY)) == FAIL_COND) {
 			return errno;
 		}
-	} else if ((fileio->in = dup(stdio->in)) == -1) {
+	} else if ((fileio->in = dup(stdio->in)) == FAIL_COND) {
 		return errno;
 	}
 	return 0;
@@ -96,10 +97,10 @@ VISIBILITY_PRIVATE int configure_output(bool isLast, IO* stdio, IO* fileio, char
 		fileio->out = pipes[WRITE_PORT];
 		fileio->in = pipes[READ_PORT];
 	} else if (outfile != NULL) {
-		if ((fileio->out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR)) == -1) {
+		if ((fileio->out = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR)) == FAIL_COND) {
 			return errno;
 		}
-	} else if ((fileio->out = dup(stdio->out)) == -1) {
+	} else if ((fileio->out = dup(stdio->out)) == FAIL_COND) {
 		return errno;	
 	}
 	return 0;
@@ -120,7 +121,7 @@ VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 	INSTANCE_NULL_CHECK_RETURN("CommandLine", line, 1);
 	// Command structure
 	char* infile = NULL; // NOTE: Always null, we only support outfiles currently
-	char* outfile = checked_invocation(strdup, line->ioModifiers->out);
+	char* outfile = checked_invocation(strdup, line->ioModifiers->outTrunc);
 	// Save stdin/stdout
 	IO stdio = stdio_save();
 	IO fileio = io_new();
@@ -144,7 +145,7 @@ VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 		err = invoke_builtin_checked(command);
 		if (err == 0) {
 			continue;
-		} else if (err != -1) {
+		} else if (err != FAIL_COND) {
 			ERROR(err, "%s", command->command);
 			break;
 		}
@@ -167,7 +168,9 @@ VISIBILITY_PRIVATE int execute_command_line(CommandLine* line) {
 			}
 			break;
 		}
+		// Free resources
 		ret_return(self_pipe_free(selfPipe), != 0, "Unable to free selfPipe");
+		// Reset error for default success
 		err = 0;
 	}
 	// Restore in/out defaults
