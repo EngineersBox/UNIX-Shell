@@ -1,101 +1,316 @@
-# COMP3300/COMP6330 Assignment1: Implementing A Unix Shell
+# Unix Shell
 
-## Problem Description
+In this project, you'll build a simple Unix shell. The shell is the heart of
+the command-line interface, and thus is central to the Unix/C programming
+environment. Mastering use of the shell is necessary to become proficient in
+this world; knowing how the shell itself is built is the focus of this
+project.
 
-For this assignment, you will implement a basic shell in linux, called the ANU Basic Interactive Shell (ANUbis). This assignment is adapted from a project specification designed by the authors of OSTEP. 
+There are three specific objectives to this assignment:
 
-See the directory [anubis/](anubis) for the detailed specification and test cases.
+* To further familiarize yourself with the Linux programming environment.
+* To learn how processes are created, destroyed, and managed.
+* To gain exposure to the necessary functionality in shells.
 
-For the details of submission deadline, please refer to the Wattle site for this course.  
+## Overview
 
-# Submission instructions
+In this assignment, you will implement a *command line interpreter (CLI)* or,
+as it is more commonly known, a *shell*. The shell should operate in this
+basic way: when you type in a command (in response to its prompt), the shell
+creates a child process that executes the command you entered and then prompts
+for more user input when it has finished.
 
-Submission will be primarily through Gitlab for this assignment. 
+The shells you implement will be similar to, but simpler than, the one you run
+every day in Unix. If you don't know what shell you are running, it's probably
+`bash`. One thing you should do on your own time is learn more about your
+shell, by reading the man pages or other online materials.
 
-**PLEASE READ THE FOLLOWING CAREFULLY**
+## Program Specifications
 
-## To get started
-- Fork this repository to your own namespace. 
-    * **Make sure** that the 'visibility' of your fork is set to **private**.
-    * **Make sure** that you select _your_ namespace. (this is only applicable to students who have greater than normal Gitlab access - others will only be able to select their own namespace.)
-    * **DO NOT RENAME THE PROJECT - LEAVE THE NAME AND URL SLUG EXACTLY AS IS**
-    * You may notice an additional member in your project - `comp3300-2023-s2-marker`. **Do not remove this member from your project**.
-- Clone the repository to your virtual machine. You most likely will have to use HTTPS for this as SSH is unavailable to most connections.
-- Get started!
-  - The specification of the problem is contained within the folder [anubis/](./anubis/), and has its own README.md file. 
-  - You can view rendered markdown using the Gitlab editor, or by opening the folder in VSCode.
+Your basic shell, called `anubis` (short for ANU basic interactive shell), is
+basically an interactive loop: it repeatedly prints a prompt `anubis> ` (note
+the space after the greater-than sign), parses the input, executes the command
+specified on that line of input, and waits for the command to finish. This is
+repeated until the user types `exit`.  The name of your final executable
+should be `anubis`.
 
-## Working
+The shell can be invoked with either no arguments or a single argument;
+anything else is an error. Here is the no-argument way:
 
-- Make sure to commit and push to the Gitlab regularly to save your work.
+```
+prompt> ./anubis
+anubis> 
+```
 
-- Test your program manually first as you build up your implementation.
+At this point, `anubis` is running, and ready to accept commands. Type away!
 
-- You can check the completeness of your implementation (as far as this assignment is concerned) against the test cases we provided in the [anubis/tests](./anubis/tests) directory. You don't normally run your program directly on these test case; rather you use the provided script [anubis/test-anubis.sh](./anubis/test-anubis.sh) to run the tests. There are a total of 30 test cases, testing all aspects of your implementation against the specification.  
+The mode above is called *interactive* mode, and allows the user to type
+commands directly. The shell also supports a *batch mode*, which instead reads
+input from a batch file and executes commands from therein. Here is how you
+run the shell with a batch file named `batch.txt`:
 
-- This gitlab repo uses a CI pipeline that will run the test cases on your code everytime you push your changes to the repository. While this is reasonably accurate (as far as we can test), it might misclassified your program output as wrong against a particular test case. If you noticed that the result of the Gitlab CI pipeline differs from the `test-anubis.sh` script, please note that down in your report and we will manually test your code. 
+```
+prompt> ./anubis batch.txt
+```
 
--  You may add and write your report source document (`.docx`, `.md`, whatever) to this repository if you wish
+One difference between batch and interactive modes: in interactive mode, a
+prompt is printed (`anubis> `). In batch mode, no prompt should be printed.
 
-- Add your report PDF to this repository with the name "uXXXXXXX_report.pdf" where "uXXXXXXX" is your UID. **You will still have to submit your PDF report to Turnitin**.
+You should structure your shell such that it creates a process for each new
+command (the exception are *built-in commands*, discussed below).  Your basic
+shell should be able to parse a command and run the program corresponding to
+the command.  For example, if the user types `ls -la /tmp`, your shell should
+run the program `/bin/ls` with the given arguments `-la` and `/tmp` (how does
+the shell know to run `/bin/ls`? It's something called the shell **path**;
+more on this below).
+
+## Required functionalities
+
+### (R1) Basic Shell
+
+The shell is very simple (conceptually): it runs in a while loop, repeatedly
+asking for input to tell it what command to execute. It then executes that
+command. The loop continues indefinitely, until the user types the built-in
+command `exit`, at which point it exits. That's it!
+
+For reading lines of input, you should use `getline()`. This allows you to
+obtain arbitrarily long input lines with ease. Generally, the shell will be
+run in *interactive mode*, where the user types a command (one at a time) and
+the shell acts on it. However, your shell will also support *batch mode*, in
+which the shell is given an input file of commands; in this case, the shell
+should not read user input (from `stdin`) but rather from this file to get the
+commands to execute.
+
+In either mode, if you hit the end-of-file marker (EOF), you should call
+`exit(0)` and exit gracefully. 
+
+To parse the input line into constituent pieces, you might want to use
+`strsep()`. Read the man page (carefully) for more details.
+
+To execute commands, look into `fork()`, `exec()`, and `wait()/waitpid()`.
+See the man pages for these functions, and also read the relevant [book
+chapter](http://www.ostep.org/cpu-api.pdf) for a brief overview.
+
+You will note that there are a variety of commands in the `exec` family; for
+this project, you must use `execv`. You should **not** use the `system()`
+library function call to run a command.  Remember that if `execv()` is
+successful, it will not return; if it does return, there was an error (e.g.,
+the command does not exist). The most challenging part is getting the
+arguments correctly specified. 
+
+### (R2) Paths
+
+In our example above, the user typed `ls` but the shell knew to execute the
+program `/bin/ls`. How does your shell know this?
+
+It turns out that the user must specify a **path** variable to describe the
+set of directories to search for executables; the set of directories that
+comprise the path are sometimes called the *search path* of the shell. The
+path variable contains the list of all directories to search, in order, when
+the user types a command. 
+
+**Important:** Note that the shell itself does not *implement* `ls` or other
+commands (except built-ins). All it does is find those executables in one of
+the directories specified by `path` and create a new process to run them.
+
+To check if a particular file exists in a directory and is executable,
+consider the `access()` system call. For example, when the user types `ls`,
+and path is set to include both `/bin` and `/usr/bin`, try `access("/bin/ls",
+X_OK)`. If that fails, try "/usr/bin/ls". If that fails too, it is an error.
+
+Your initial shell path should contain one directory: `/bin`
+
+Note: Most shells allow you to specify a binary specifically without using a
+search path, using either **absolute paths** or **relative paths**. For
+example, a user could type the **absolute path** `/bin/ls` and execute the
+`ls` binary without a search path being needed. A user could also specify a
+**relative path** which starts with the current working directory and
+specifies the executable directly, e.g., `./main`. In this project, you **do
+not** have to worry about these features.
+
+### (R3) Built-in Commands
+
+Whenever your shell accepts a command, it should check whether the command is
+a **built-in command** or not. If it is, it should not be executed like other
+programs. Instead, your shell will invoke your implementation of the built-in
+command. For example, to implement the `exit` built-in command, you simply
+call `exit(0);` in your anubis source code, which then will exit the shell.
+
+In this project, you should implement `exit`, `cd`, and `path` as built-in
+commands.
+
+* `exit`: When the user types `exit`, your shell should simply call the `exit`
+  system call with 0 as a parameter. It is an error to pass any arguments to
+  `exit`. 
+
+* `cd`: `cd` always take one argument (0 or >1 args should be signaled as an
+error). To change directories, use the `chdir()` system call with the argument
+supplied by the user; if `chdir` fails, that is also an error.
+
+* `path`: The `path` command takes 0 or more arguments, with each argument
+  separated by whitespace from the others. A typical usage would be like this:
+  `anubis> path /bin /usr/bin`, which would add `/bin` and `/usr/bin` to the
+  search path of the shell. If the user sets path to be empty, then the shell
+  should not be able to run any programs (except built-in commands). The
+  `path` command always overwrites the old path with the newly specified
+  path. 
+
+### (R4) Output Redirection
+
+Many times, a shell user prefers to send the output of a program to a file
+rather than to the screen. Usually, a shell provides this nice feature with
+the `>` character. Formally this is named as redirection of standard
+output. To make your shell users happy, your shell should also include this
+feature, but with a slight twist (explained below).
+
+For example, if a user types `ls -la /tmp > output`, nothing should be printed
+on the screen. Instead, the standard output of the `ls` program should be
+rerouted to the file `output`. In addition, the standard error output of
+the program should be rerouted to the file `output` (the twist is that this
+is a little different than standard redirection).
+
+If the `output` file exists before you run your program, you should simple
+overwrite it (after truncating it).  
+
+The exact format of redirection is a command (and possibly some arguments)
+followed by the redirection symbol followed by a filename. Multiple
+redirection operators or multiple files to the right of the redirection sign
+are errors.
+
+Note: don't worry about redirection for built-in commands (e.g., we will
+not test what happens when you type `path /bin > file`).
+
+### (R5) Pipes
+
+One of the main design principles surrounding the design of a shell is
+the ability to chain together a collection of simple utilities to perform 
+a more complex task. A particularly powerful chaining method is the ability
+to redirect the output of a program to the input of another program. This is
+also known as a `pipe`, and is usually denoted with the symbol `|`.  
+
+For example, if a user types in a command 
+`ls -la /tmp | head -n 2`, it should print the first two lines of the output
+of the `ls -la /tmp` command. An arbitrary number of commands can be chained this way. 
+More generally, the piping operator should be able to support a chain of commands such as
+
+`command_1 args_1 | command_2 args_2 | ... | command_n args_n`.
+
+These commands should be executed in parallel (though one or more may block while waiting for
+the output of another command). 
+
+To implement this piping operator, you can use the `pipe()` system call to create a pipe, 
+and the `dup()` and `dup2()` system calls to redirect standard input/output of processes
+as appropriate. 
 
 
-## Submission
+### (R6) Parallel Commands
 
-- Make sure your **latest** report PDF has been uploaded to turnitin. **This is important, do not forget this.**
-- Make sure your work is **committed and pushed** to this repository **before** the deadline (accounting for extensions/EAPs). 
-    - As per the usual, a 100% late submission deduction applies.
+Your shell will also allow the user to launch parallel commands. This is
+accomplished with the ampersand operator as follows:
 
-- Once your work has been pushed to your Gitlab, you do not need to do anything further! We are able to fork your submissions for marking.
-  * You can double check your submission status by going to your fork of the assignment and checking for your most recent commit.
-  * Don't be afraid to ask questions about the process in the labs or on EdStem!
+```
+anubis> cmd1 & cmd2 args1 args2 & cmd3 args1
+```
 
-- The submission time on gitlab will be used to determine whether you submitted on time. However, your mark will not be finalised until you have also submitted your report to Turnitin for validation. 
+In this case, instead of running `cmd1` and then waiting for it to finish,
+your shell should run `cmd1`, `cmd2`, and `cmd3` (each with whatever arguments
+the user has passed to it) in parallel, *before* waiting for any of them to
+complete. 
 
-- Your artefact must be implemented in the C programming language. 
+Then, after starting all such processes, you must make sure to use `wait()`
+(or `waitpid`) to wait for them to complete. After all processes are done,
+return control to the user as usual (or, if in batch mode, move on to the next
+line).
 
-- You must implement all the required functionalities using only standard libraries in C (and procps), using the provided template file (`anubis.c`). The libraries "included" in the template `anubis.c` are sufficient to implement your code. 
+## Operator precedence
 
-## Statement of originality
+The procedence of the three shell operators above (`>`, `|` and `&`) is ordered as follows: `|` has the highest,
+followed by `>` and finally `&`. That means that in a command like
 
-- You must include a Statement of Originality in your report. Use the following template for the statement:
+```
+anubis> cmd1 | cmd2 > output1 & cmd3 > ouput2 & cmd4
+```
 
-    >   I declare that everything I have submitted in this assignment is entirely my
-  own work, with the following exceptions:
-    >  - list the sources of code you used, articles, blogs, books etc, if any
-    >  - discussions with others related to this assignment, if any 
+should be interpreted as the parallel execution of the following three commands: 
 
-- Please keep in mind that this is an individual assignment, so be aware that collaborating with others to solve this assignment may constitute an academic misconduct. 
+- the piped commands `cmd1 | cmd2`, with the output of the pipe redirected to the file `output1`,
 
-- Read the [ANU page on academic integrity](https://www.anu.edu.au/students/academic-skills/academic-integrity) for more information on academic integrity. 
+- the command `cmd3`, with its output redirected to the file `output2`, and
+
+- the command `cmd4`, which outputs to the standard output. 
 
 
-## Assessment
+## Program Errors
 
-Your assignment is assessed based on your artefact (i.e., the code you submitted) and your report, using the following rubrics. 
+**The one and only error message.** You should print this one and only error
+message whenever you encounter an error of any type: 
 
-- Artefact [50%]: 
-    * [30%] Pass automated test cases.
-    * [20%] Code quality: 
-        - clearly formatted and commented
-        - compiled without errors or warnings
-        - code "hygiene": avoid hardcoded constants, minimise memory leaks, checks for runtime errors (null pointers, out-of-bound accesses, etc).  
+```
+An error has occurred
+```
 
-- Report [50%]: 
-    * Completeness: all required functionalities explained.
-    * Correctness: explanation of algorithm(s)/data structure(s) used is correct. 
-    * Writing quality: 
-        - Your writing should be concise, readable and comprehensible. Focus on important parts of your code and explain key ideas in the code, e.g., your overall parsing strategy, why a particular system call is needed, the subtleties in the order of input/output redirections, etc. Don't waste space by explaining every line of code -- for that you can use comments in the source file. 
-        - Your report should be professionally typeset, so for example, avoid handwritten notes, and if you use screen captures, they must be readable. 
-        - Your report should contain proper acknowledgement/citations if you use any external sources for your ideas. 
-    * Report length <= 1500 words, excluding citations, figures, code excerpts, tables. 
+However, while developing and debugging your code, you may find it useful to print informative error messages, rather than the same error message for all errors. The template file `anubis.c` provides you with a function (`ERROR`) to print this error message. 
+The behaviour of this function depends on a global variable (`_DEBUG`). If `_DEBUG` is 0, then only the simple message `"An error has occured"` is printed. Use this for your final submitted version.
+If `_DEBUG` is set to 1, the `ERROR` function will print custom messages you set it to. In most cases, if you only want to output a simple error message, simply use
 
-- Penalty: 
-    
-    * **No late submission allowed** without a prior approval from the convenor. Late submission penalty is 100%. 
+```C
+ERROR(0,"this is a custom error message"); 
+```
 
-    * Using unapproved libraries or functions may result in 100% penalty, depending on the severity of the violation. It may also lead to academic misconduct investigations. 
+Notice that `ERROR` is what is called a "variadic" function, and can take arguments of arbitrary length, much like `printf`. For example, the following
 
-## Acknowledgement
+```C
+ERROR(0,"one (%d), two (%d), three (%d)", 1, 2, 3);
+```
 
-The assignment specification and its automated test cases and test scripts are adapted from [the "shell" OSTEP project](https://github.com/remzi-arpacidusseau/ostep-projects/tree/master/processes-shell) by Remzi Arpaci-Dusseau.
+will output `"one (1), two (2), three (3)"` (followed by a new line). 
+
+
+After most errors, your shell simply *continues processing* after
+printing the one and only error message. However, if the shell is
+invoked with more than one file, or if the shell is passed a bad batch
+file, it should exit by calling `exit(1)`.
+
+There is a difference between errors that your shell catches and those that
+the program catches. Your shell should catch all the syntax errors specified
+in this project page. If the syntax of the command looks perfect, you simply
+run the specified program. If there are any program-related errors (e.g.,
+invalid arguments to `ls` when you run it, for example), the shell does not
+have to worry about that (rather, the program will print its own error
+messages and exit).
+
+
+## Miscellaneous Hints
+
+Remember to get the **basic functionality** of your shell working before
+worrying about all of the error conditions and end cases. For example, first
+get a single command running (probably first a command with no arguments, such
+as `ls`). 
+
+Next, add built-in commands. Then, try working on redirection. Finally, think
+about parallel commands. Each of these requires a little more effort on
+parsing, but each should not be too hard to implement.
+
+At some point, you should make sure your code is robust to white space of
+various kinds, including spaces (` `) and tabs (`\t`). In general, the user
+should be able to put variable amounts of white space before and after
+commands, arguments, and various operators; however, the operators
+(redirection, pipe and parallel commands) do not require whitespace.
+
+Check the return codes of all system calls from the very beginning of your
+work. This will often catch errors in how you are invoking these new system
+calls. It's also just good programming sense.
+
+Beat up your own code! You are the best (and in this case, the only) tester of
+this code. Throw lots of different inputs at it and make sure the shell
+behaves well. Good code comes through testing; you must run many different
+tests to make sure things work as desired. Don't be gentle -- other users
+certainly won't be. 
+
+Finally, keep versions of your code. More advanced programmers will use a
+source control system such as git. Minimally, when you get a piece of
+functionality working, make a copy of your .c file (perhaps a subdirectory
+with a version number, such as v1, v2, etc.). By keeping older, working
+versions around, you can comfortably work on adding new functionality, safe in
+the knowledge you can always go back to an older, working version if need be.
+
